@@ -1,0 +1,378 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Mail, Lock, User, Activity, Eye, EyeOff, LogIn } from 'lucide-react';
+
+export default function AuthScreen({ onSuccess }) {
+  const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  
+  // Form values
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  
+  // Error / Loading states
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!email || !password || (!isLogin && !username)) {
+      setError('Por favor, completa todos los campos.');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    setLoading(true);
+
+    if (isLogin) {
+      setTimeout(() => {
+        setLoading(false);
+        const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
+        const user = storedUsers.find(u => u.email === email && u.password === password);
+        if (user) {
+          onSuccess(user);
+        } else {
+          setError('Correo o contraseña incorrectos.');
+        }
+      }, 1000);
+    } else {
+      setTimeout(() => {
+        setLoading(false);
+        const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
+        const userExists = storedUsers.some(u => u.email === email);
+        if (userExists) {
+          setError('Este correo electrónico ya está registrado.');
+          return;
+        }
+        
+        const newUser = {
+          id: Date.now(),
+          username,
+          email,
+          password
+        };
+        storedUsers.push(newUser);
+        localStorage.setItem('mlb_users', JSON.stringify(storedUsers));
+        onSuccess(newUser);
+      }, 1000);
+    }
+  };
+
+  return (
+    <div className="auth-screen-container" style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'radial-gradient(circle at 50% 50%, hsl(222, 47%, 8%) 0%, hsl(222, 47%, 3%) 100%)',
+      padding: '20px',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Luces y efectos decorativos de estadio de béisbol de fondo */}
+      <div style={{
+        position: 'absolute',
+        top: '-10%',
+        left: '-10%',
+        width: '50%',
+        height: '50%',
+        background: 'radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%)',
+        zIndex: 1,
+        pointerEvents: 'none'
+      }}></div>
+      <div style={{
+        position: 'absolute',
+        bottom: '-10%',
+        right: '-10%',
+        width: '50%',
+        height: '50%',
+        background: 'radial-gradient(circle, rgba(147, 51, 234, 0.05) 0%, transparent 70%)',
+        zIndex: 1,
+        pointerEvents: 'none'
+      }}></div>
+
+      <div className="glass-panel" style={{
+        width: '100%',
+        maxWidth: '440px',
+        padding: '40px 32px',
+        borderRadius: '24px',
+        background: 'rgba(3, 7, 18, 0.45)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        backdropFilter: 'blur(20px)',
+        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+        zIndex: 10,
+        position: 'relative'
+      }}>
+        
+        {/* Logo / Marca */}
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{
+            display: 'inline-flex',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            padding: '12px',
+            borderRadius: '16px',
+            border: '1px solid rgba(59, 130, 246, 0.25)',
+            marginBottom: '16px',
+            animation: 'pulseGlow 2.5s infinite alternate'
+          }}>
+            <Activity style={{ width: '32px', height: '32px', color: 'var(--color-primary)' }} />
+          </div>
+          
+          <h1 className="text-gradient" style={{
+            fontSize: '1.8rem',
+            fontWeight: 900,
+            letterSpacing: '0.02em',
+            margin: '0 0 8px 0',
+            lineHeight: '1.2'
+          }}>
+            ANALISTA DE JUGADAS MLB
+          </h1>
+          
+          <p style={{
+            fontSize: '0.85rem',
+            color: 'var(--text-secondary)',
+            margin: 0
+          }}>
+            Análisis lógico y predicciones estadísticas en tiempo real
+          </p>
+        </div>
+
+        {/* Formulario */}
+        <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Selector de pestañas */}
+          <div style={{
+            display: 'flex',
+            background: 'rgba(255, 255, 255, 0.02)',
+            padding: '4px',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            marginBottom: '8px'
+          }}>
+            <button
+              type="button"
+              onClick={() => { setIsLogin(true); setError(''); }}
+              style={{
+                flex: 1,
+                padding: '12px 0',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                background: isLogin ? 'rgba(255, 255, 255, 0.08)' : 'none',
+                color: isLogin ? 'var(--text-primary)' : 'var(--text-secondary)',
+                transition: 'var(--transition-smooth)'
+              }}
+            >
+              Iniciar Sesión
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIsLogin(false); setError(''); }}
+              style={{
+                flex: 1,
+                padding: '12px 0',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                background: !isLogin ? 'rgba(255, 255, 255, 0.08)' : 'none',
+                color: !isLogin ? 'var(--text-primary)' : 'var(--text-secondary)',
+                transition: 'var(--transition-smooth)'
+              }}
+            >
+              Registrarse
+            </button>
+          </div>
+
+          {/* Input: Nombre de Usuario (Solo en Registro) */}
+          {!isLogin && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Nombre de Usuario</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Ej. JuanPerez99"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '14px 14px 14px 44px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                    transition: 'border-color 0.2s'
+                  }}
+                  required
+                />
+                <User style={{
+                  position: 'absolute',
+                  left: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '18px',
+                  height: '18px',
+                  color: 'var(--text-secondary)'
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* Input: Correo Electrónico */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Correo Electrónico</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="email"
+                placeholder="ejemplo@correo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '14px 14px 14px 44px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '12px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                required
+              />
+              <Mail style={{
+                position: 'absolute',
+                left: '14px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '18px',
+                height: '18px',
+                color: 'var(--text-secondary)'
+              }} />
+            </div>
+          </div>
+
+          {/* Input: Contraseña */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Contraseña</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Mínimo 6 caracteres"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '14px 44px 14px 44px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  borderRadius: '12px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                required
+              />
+              <Lock style={{
+                position: 'absolute',
+                left: '14px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '18px',
+                height: '18px',
+                color: 'var(--text-secondary)'
+              }} />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '14px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-secondary)',
+                  padding: 0
+                }}
+              >
+                {showPassword ? <EyeOff style={{ width: '18px', height: '18px' }} /> : <Eye style={{ width: '18px', height: '18px' }} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Mensaje de Error */}
+          {error && (
+            <div style={{
+              color: 'var(--color-high-risk)',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              background: 'var(--color-high-risk-bg)',
+              padding: '12px 14px',
+              borderRadius: '10px',
+              border: '1px solid hsla(0, 84%, 60%, 0.15)'
+            }}>
+              {error}
+            </div>
+          )}
+
+          {/* Botón de Envío */}
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-primary"
+            style={{
+              width: '100%',
+              justifyContent: 'center',
+              padding: '14px',
+              borderRadius: '12px',
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              marginTop: '10px'
+            }}
+          >
+            {loading ? (
+              <div style={{
+                width: '20px',
+                height: '20px',
+                border: '2px solid rgba(255,255,255,0.2)',
+                borderTopColor: 'var(--text-primary)',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite'
+              }}></div>
+            ) : (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <LogIn style={{ width: '18px', height: '18px' }} />
+                {isLogin ? 'Acceder al Sistema' : 'Crear Cuenta'}
+              </span>
+            )}
+          </button>
+
+        </form>
+
+      </div>
+
+      <style jsx global>{`
+        @keyframes pulseGlow {
+          0% { border-color: rgba(59, 130, 246, 0.15); box-shadow: 0 0 10px rgba(59, 130, 246, 0.05); }
+          100% { border-color: rgba(59, 130, 246, 0.45); box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
+        }
+      `}</style>
+    </div>
+  );
+}

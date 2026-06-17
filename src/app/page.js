@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../components/Header';
 import PredictionCard from '../components/PredictionCard';
 import TeamCompareModal from '../components/TeamCompareModal';
-import AuthModal from '../components/AuthModal';
+import AuthScreen from '../components/AuthScreen';
 import { Calendar, Search, SlidersHorizontal, RefreshCw, Sparkles, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
 
 export default function Home() {
@@ -19,19 +19,19 @@ export default function Home() {
 
   // Estados de Autenticación
   const [user, setUser] = useState(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const activeUser = localStorage.getItem('mlb_active_user');
     if (activeUser) {
       setUser(JSON.parse(activeUser));
     }
+    setAuthChecked(true);
   }, []);
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
     localStorage.setItem('mlb_active_user', JSON.stringify(userData));
-    setShowAuthModal(false);
   };
 
   const handleLogout = () => {
@@ -91,6 +91,18 @@ export default function Home() {
 
   const lowRiskGamesCount = games.filter(g => g.prediction.riskLevel === 'Bajo').length;
 
+  if (!authChecked) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'hsl(222, 47%, 4%)' }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onSuccess={handleLoginSuccess} />;
+  }
+
   return (
     <div className="dashboard-container">
       {/* Header Premium */}
@@ -98,7 +110,6 @@ export default function Home() {
         totalGames={games.length} 
         lowRiskCount={lowRiskGamesCount} 
         user={user}
-        onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
       />
 
@@ -327,13 +338,7 @@ export default function Home() {
         />
       )}
 
-      {/* Modal de Autenticación */}
-      {showAuthModal && (
-        <AuthModal 
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleLoginSuccess}
-        />
-      )}
+
 
       {/* Estilos locales para animaciones del loader */}
       <style jsx global>{`
