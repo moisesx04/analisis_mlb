@@ -1,0 +1,310 @@
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import Header from '../components/Header';
+import PredictionCard from '../components/PredictionCard';
+import TeamCompareModal from '../components/TeamCompareModal';
+import { Calendar, Search, SlidersHorizontal, RefreshCw, Sparkles, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
+
+export default function Home() {
+  const [date, setDate] = useState('2026-06-17'); // Inicializado en la fecha local simulada
+  const [games, setGames] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [riskFilter, setRiskFilter] = useState('all'); // all, Bajo, Medio, Alto
+  const [selectedGame, setSelectedGame] = useState(null);
+  const [bestPlayOfDay, setBestPlayOfDay] = useState(null);
+
+  const fetchPredictions = useCallback(async (targetDate) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/predictions?date=${targetDate}`);
+      if (!response.ok) {
+        throw new Error('No se pudo obtener la cartelera de predicciones.');
+      }
+      const data = await response.json();
+      setGames(data.games || []);
+      
+      // Buscar la mejor jugada del día (la que tiene mayor porcentaje de confianza)
+      const sortedByConfidence = [...(data.games || [])].sort(
+        (a, b) => b.prediction.confidence - a.prediction.confidence
+      );
+      
+      // Filtrar que la mejor jugada sea calificada de Bajo Riesgo si existe
+      const lowRiskBest = sortedByConfidence.find(g => g.prediction.riskLevel === 'Bajo');
+      setBestPlayOfDay(lowRiskBest || sortedByConfidence[0] || null);
+
+    } catch (err) {
+      console.error(err);
+      setError('Error al conectar con el servidor de análisis estadístico. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPredictions(date);
+  }, [date, fetchPredictions]);
+
+  // Manejador del cambio de fecha
+  const handleDateChange = (e) => {
+    setDate(e.target.value);
+  };
+
+  // Filtrado de partidos
+  const filteredGames = games.filter(game => {
+    const matchesSearch = 
+      game.homeTeam.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      game.awayTeam.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      game.homeTeam.abbrev.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      game.awayTeam.abbrev.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRisk = riskFilter === 'all' || game.prediction.riskLevel === riskFilter;
+
+    return matchesSearch && matchesRisk;
+  });
+
+  const lowRiskGamesCount = games.filter(g => g.prediction.riskLevel === 'Bajo').length;
+
+  return (
+    <div className="dashboard-container">
+      {/* Header Premium */}
+      <Header totalGames={games.length} lowRiskCount={lowRiskGamesCount} />
+
+      {/* Grid Superior: Controles de Fecha y Destacados */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+        
+        {/* Panel de Controles */}
+        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <SlidersHorizontal style={{ width: '18px', height: '18px', color: 'var(--color-primary)' }} />
+            Filtros y Calendario
+          </h2>
+          
+          {/* Selector de fecha */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Fecha de Partidos</label>
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="date" 
+                value={date} 
+                onChange={handleDateChange}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px 12px 40px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '10px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+              <Calendar style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '18px', height: '18px', color: 'var(--text-secondary)' }} />
+            </div>
+          </div>
+
+          {/* Búsqueda de equipos */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Buscar Equipo</label>
+            <div style={{ position: 'relative' }}>
+              <input 
+                type="text" 
+                placeholder="Ej. Yankees, Dodgers, BOS..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px 12px 40px',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-glass)',
+                  borderRadius: '10px',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  outline: 'none'
+                }}
+              />
+              <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '18px', height: '18px', color: 'var(--text-secondary)' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Panel: Jugada Estrella del Día (Mayor Confianza) */}
+        {bestPlayOfDay && (
+          <div className="glass-panel" style={{ 
+            padding: '24px', 
+            background: 'linear-gradient(135deg, hsla(217, 91%, 60%, 0.06) 0%, hsla(270, 91%, 60%, 0.02) 100%)',
+            borderColor: 'rgba(59, 130, 246, 0.25)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            gap: '12px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles style={{ width: '14px', height: '14px', fill: 'var(--color-primary)' }} />
+                  Recomendación Principal del Día
+                </span>
+                <span className="badge" style={{ borderColor: 'rgba(59, 130, 246, 0.3)', color: 'var(--color-primary)', fontWeight: 700 }}>
+                  Confianza: {bestPlayOfDay.prediction.confidence}%
+                </span>
+              </div>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '6px 0', color: 'var(--text-primary)' }}>
+                {bestPlayOfDay.prediction.bestPlay}
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                {bestPlayOfDay.prediction.details}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img src={bestPlayOfDay.awayTeam.logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bestPlayOfDay.awayTeam.abbrev}</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@</span>
+                <img src={bestPlayOfDay.homeTeam.logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bestPlayOfDay.homeTeam.abbrev}</span>
+              </div>
+              <button 
+                className="btn-primary" 
+                style={{ fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px' }}
+                onClick={() => setSelectedGame(bestPlayOfDay)}
+              >
+                Ver Análisis Completo
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Tabs de Filtro de Riesgo */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+          <button 
+            onClick={() => setRiskFilter('all')}
+            style={{
+              background: riskFilter === 'all' ? 'rgba(255,255,255,0.08)' : 'none',
+              border: 'none',
+              color: riskFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              transition: 'var(--transition-smooth)'
+            }}
+          >
+            Todos ({games.length})
+          </button>
+          <button 
+            onClick={() => setRiskFilter('Bajo')}
+            style={{
+              background: riskFilter === 'Bajo' ? 'var(--color-low-risk-bg)' : 'none',
+              border: 'none',
+              color: riskFilter === 'Bajo' ? 'var(--color-low-risk)' : 'var(--text-secondary)',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              transition: 'var(--transition-smooth)'
+            }}
+          >
+            Bajo Riesgo ({games.filter(g => g.prediction.riskLevel === 'Bajo').length})
+          </button>
+          <button 
+            onClick={() => setRiskFilter('Medio')}
+            style={{
+              background: riskFilter === 'Medio' ? 'var(--color-medium-risk-bg)' : 'none',
+              border: 'none',
+              color: riskFilter === 'Medio' ? 'var(--color-medium-risk)' : 'var(--text-secondary)',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              transition: 'var(--transition-smooth)'
+            }}
+          >
+            Riesgo Medio ({games.filter(g => g.prediction.riskLevel === 'Medio').length})
+          </button>
+          <button 
+            onClick={() => setRiskFilter('Alto')}
+            style={{
+              background: riskFilter === 'Alto' ? 'var(--color-high-risk-bg)' : 'none',
+              border: 'none',
+              color: riskFilter === 'Alto' ? 'var(--color-high-risk)' : 'var(--text-secondary)',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              transition: 'var(--transition-smooth)'
+            }}
+          >
+            Omitir / Alto Riesgo ({games.filter(g => g.prediction.riskLevel === 'Alto').length})
+          </button>
+        </div>
+
+        <button 
+          className="btn-secondary" 
+          style={{ padding: '8px 14px', fontSize: '0.85rem' }}
+          onClick={() => fetchPredictions(date)}
+          disabled={loading}
+        >
+          <RefreshCw className={loading ? 'spin-icon' : ''} style={{ width: '16px', height: '16px', animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+          Actualizar Datos
+        </button>
+      </div>
+
+      {/* Grid de Partidos */}
+      {loading ? (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '16px' }}>
+          <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Analizando estadísticas de MLB & ESPN...</p>
+        </div>
+      ) : error ? (
+        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', borderColor: 'var(--color-high-risk-bg)', maxWidth: '600px', margin: '40px auto' }}>
+          <p style={{ color: 'var(--color-high-risk)', fontWeight: 600, fontSize: '1.1rem', marginBottom: '16px' }}>{error}</p>
+          <button className="btn-primary" onClick={() => fetchPredictions(date)}>Reintentar Conexión</button>
+        </div>
+      ) : filteredGames.length === 0 ? (
+        <div className="glass-panel" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <HelpCircle style={{ width: '48px', height: '48px', color: 'var(--text-muted)', marginBottom: '16px' }} />
+          <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>No se encontraron partidos para mostrar.</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '6px' }}>Prueba cambiando la fecha o ajustando tus filtros de búsqueda.</p>
+        </div>
+      ) : (
+        <div className="grid-predictions">
+          {filteredGames.map(game => (
+            <PredictionCard 
+              key={game.id} 
+              game={game} 
+              onCompare={setSelectedGame} 
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Modal de Comparativa */}
+      {selectedGame && (
+        <TeamCompareModal 
+          game={selectedGame} 
+          onClose={() => setSelectedGame(null)} 
+        />
+      )}
+
+      {/* Estilos locales para animaciones del loader */}
+      <style jsx global>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
