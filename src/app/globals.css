@@ -303,3 +303,13 @@ h1, h2, h3, h4 {
   color: var(--text-muted);
   text-transform: uppercase;
 }
+
+/* Estilos para inputs de código de verificación */
+.code-input {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.code-input:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 12px var(--color-primary-glow) !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}

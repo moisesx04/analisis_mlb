@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../components/Header';
 import PredictionCard from '../components/PredictionCard';
 import TeamCompareModal from '../components/TeamCompareModal';
+import AuthModal from '../components/AuthModal';
 import { Calendar, Search, SlidersHorizontal, RefreshCw, Sparkles, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
 
 export default function Home() {
@@ -15,6 +16,28 @@ export default function Home() {
   const [riskFilter, setRiskFilter] = useState('all'); // all, Bajo, Medio, Alto
   const [selectedGame, setSelectedGame] = useState(null);
   const [bestPlayOfDay, setBestPlayOfDay] = useState(null);
+
+  // Estados de Autenticación
+  const [user, setUser] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  useEffect(() => {
+    const activeUser = localStorage.getItem('mlb_active_user');
+    if (activeUser) {
+      setUser(JSON.parse(activeUser));
+    }
+  }, []);
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    localStorage.setItem('mlb_active_user', JSON.stringify(userData));
+    setShowAuthModal(false);
+  };
+
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem('mlb_active_user');
+  };
 
   const fetchPredictions = useCallback(async (targetDate) => {
     setLoading(true);
@@ -71,7 +94,13 @@ export default function Home() {
   return (
     <div className="dashboard-container">
       {/* Header Premium */}
-      <Header totalGames={games.length} lowRiskCount={lowRiskGamesCount} />
+      <Header 
+        totalGames={games.length} 
+        lowRiskCount={lowRiskGamesCount} 
+        user={user}
+        onOpenAuth={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
+      />
 
       {/* Grid Superior: Controles de Fecha y Destacados */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
@@ -295,6 +324,14 @@ export default function Home() {
         <TeamCompareModal 
           game={selectedGame} 
           onClose={() => setSelectedGame(null)} 
+        />
+      )}
+
+      {/* Modal de Autenticación */}
+      {showAuthModal && (
+        <AuthModal 
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleLoginSuccess}
         />
       )}
 
