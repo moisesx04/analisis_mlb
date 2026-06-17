@@ -20,8 +20,15 @@ export default function Home() {
   const [selectedGame, setSelectedGame] = useState(null);
   const [bestPlayOfDay, setBestPlayOfDay] = useState(null);
 
-  // Estados de Autenticación
-  const [user, setUser] = useState(null);
+  // Estados de Autenticación (Pre-inicializado con usuario administrador para omitir el login)
+  const defaultAdminUser = {
+    username: 'Administrador',
+    email: 'admin@analistamlb.com',
+    credits: 50.00,
+    role: 'admin'
+  };
+
+  const [user, setUser] = useState(defaultAdminUser);
   const [authChecked, setAuthChecked] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
 
@@ -29,6 +36,8 @@ export default function Home() {
     const activeUser = localStorage.getItem('mlb_active_user');
     if (activeUser) {
       setUser(JSON.parse(activeUser));
+    } else {
+      setUser(defaultAdminUser);
     }
     setAuthChecked(true);
   }, []);
@@ -37,23 +46,27 @@ export default function Home() {
   useEffect(() => {
     if (!user || !user.email) return;
 
-    const channel = supabase
-      .channel(`user-updates-${user.email}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'users', filter: `email=eq.${user.email}` },
-        (payload) => {
-          if (payload.new) {
-            setUser(payload.new);
-            localStorage.setItem('mlb_active_user', JSON.stringify(payload.new));
+    try {
+      const channel = supabase
+        .channel(`user-updates-${user.email}`)
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'users', filter: `email=eq.${user.email}` },
+          (payload) => {
+            if (payload.new) {
+              setUser(payload.new);
+              localStorage.setItem('mlb_active_user', JSON.stringify(payload.new));
+            }
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (err) {
+      console.error('Realtime subscription error:', err);
+    }
   }, [user?.email]);
 
   const handleLoginSuccess = (userData) => {
