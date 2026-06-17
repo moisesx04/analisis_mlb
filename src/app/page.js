@@ -7,7 +7,6 @@ import TeamCompareModal from '../components/TeamCompareModal';
 import AuthScreen from '../components/AuthScreen';
 import ChatWidget from '../components/ChatWidget';
 import AdminPanel from '../components/AdminPanel';
-import { supabase } from '../lib/supabase';
 import { Calendar, Search, SlidersHorizontal, RefreshCw, Sparkles, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
 
 export default function Home() {
@@ -42,32 +41,37 @@ export default function Home() {
     setAuthChecked(true);
   }, []);
 
-  // Escuchar actualizaciones de créditos/usuario en tiempo real desde Supabase
+  // Polling para mantener actualizados los créditos y rol del usuario
   useEffect(() => {
     if (!user || !user.email) return;
 
-    try {
-      const channel = supabase
-        .channel(`user-updates-${user.email}`)
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'users', filter: `email=eq.${user.email}` },
-          (payload) => {
-            if (payload.new) {
-              setUser(payload.new);
-              localStorage.setItem('mlb_active_user', JSON.stringify(payload.new));
+    const fetchUserProfile = async () => {
+      try {
+        const response = await fetch(`/api/users/profile?email=${encodeURIComponent(user.email)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.success && data.user) {
+            // Solo actualizar el estado si los datos han cambiado
+            if (
+              data.user.credits !== user.credits || 
+              data.user.role !== user.role || 
+              data.user.username !== user.username
+            ) {
+              setUser(data.user);
+              localStorage.setItem('mlb_active_user', JSON.stringify(data.user));
             }
           }
-        )
-        .subscribe();
+        }
+      } catch (err) {
+        console.error('Error fetching user profile:', err);
+      }
+    };
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (err) {
-      console.error('Realtime subscription error:', err);
-    }
-  }, [user?.email]);
+    fetchUserProfile();
+    const interval = setInterval(fetchUserProfile, 5000);
+
+    return () => clearInterval(interval);
+  }, [user?.email, user?.credits, user?.role, user?.username]);
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);

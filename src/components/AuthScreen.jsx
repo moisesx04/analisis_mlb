@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, Activity, Eye, EyeOff, LogIn, Sun, Moon } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 export default function AuthScreen({ onSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -53,70 +52,44 @@ export default function AuthScreen({ onSuccess }) {
 
     try {
       if (isLogin) {
-        // Consultar el usuario en Supabase
-        const { data: user, error: loginError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', email)
-          .eq('password', password)
-          .maybeSingle();
+        // Consultar el usuario en Neon DB a través del API
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
 
+        const data = await response.json();
         setLoading(false);
 
-        if (loginError) {
-          console.error(loginError);
-          setError('Error de conexión con la base de datos.');
+        if (!response.ok) {
+          setError(data.error || 'Correo o contraseña incorrectos.');
           return;
         }
 
-        if (user) {
-          onSuccess(user);
+        if (data.user) {
+          onSuccess(data.user);
         } else {
           setError('Correo o contraseña incorrectos.');
         }
       } else {
-        // Registrar en Supabase
-        // 1. Verificar si el correo ya existe
-        const { data: existingUser, error: findError } = await supabase
-          .from('users')
-          .select('id')
-          .eq('email', email)
-          .maybeSingle();
+        // Registrar en Neon DB a través del API
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password })
+        });
 
-        if (findError) {
-          console.error(findError);
-          setLoading(false);
-          setError('Error al verificar la disponibilidad del correo.');
-          return;
-        }
-
-        if (existingUser) {
-          setLoading(false);
-          setError('Este correo electrónico ya está registrado.');
-          return;
-        }
-
-        // 2. Insertar nuevo usuario
-        // Nota: para pruebas, puedes establecer que "admin@analistamlb.com" tenga el rol admin por defecto
-        const isAdminEmail = email.toLowerCase() === 'admin@analistamlb.com';
-        const { data: newUser, error: insertError } = await supabase
-          .from('users')
-          .insert([
-            { username, email, password, credits: 0.00, role: isAdminEmail ? 'admin' : 'user' }
-          ])
-          .select()
-          .single();
-
+        const data = await response.json();
         setLoading(false);
 
-        if (insertError) {
-          console.error(insertError);
-          setError('Error al crear la cuenta en la base de datos.');
+        if (!response.ok) {
+          setError(data.error || 'Error al crear la cuenta.');
           return;
         }
 
-        if (newUser) {
-          onSuccess(newUser);
+        if (data.user) {
+          onSuccess(data.user);
         }
       }
     } catch (err) {

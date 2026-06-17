@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Coins, MessageSquare, ShieldCheck, X, Send, Check, AlertTriangle, Clock, ArrowRight, Search, User } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+// import { supabase } from '../lib/supabase';
 
 export default function AdminPanel({ adminUser, onClose }) {
   const [users, setUsers] = useState([]);
@@ -16,37 +16,18 @@ export default function AdminPanel({ adminUser, onClose }) {
 
   const messagesEndRef = useRef(null);
 
-  // 1. Cargar datos iniciales
+  // 1. Cargar datos iniciales y configurar sondeo de actualización (polling)
   useEffect(() => {
     fetchData();
 
-    // Suscribirse a nuevos mensajes de manera global en tiempo real
-    const channel = supabase
-      .channel('admin-global-messages')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
-          setMessages(prev => [...prev, payload.new]);
-        }
-      )
-      .subscribe();
-
-    // Suscribirse a nuevos depósitos
-    const depositChannel = supabase
-      .channel('admin-global-deposits')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'deposits' },
-        () => {
-          fetchDeposits();
-        }
-      )
-      .subscribe();
+    // Consultar periódicamente cada 3 segundos nuevos mensajes y depósitos
+    const interval = setInterval(() => {
+      fetchMessages();
+      fetchDeposits();
+    }, 3000);
 
     return () => {
-      supabase.removeChannel(channel);
-      supabase.removeChannel(depositChannel);
+      clearInterval(interval);
     };
   }, []);
 
@@ -63,18 +44,39 @@ export default function AdminPanel({ adminUser, onClose }) {
   };
 
   const fetchUsers = async () => {
-    const { data } = await supabase.from('users').select('*').order('created_at', { ascending: false });
-    if (data) setUsers(data);
+    try {
+      const response = await fetch('/api/users');
+      const data = await response.json();
+      if (data && data.success) {
+        setUsers(data.users || []);
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
   };
 
   const fetchDeposits = async () => {
-    const { data } = await supabase.from('deposits').select('*').order('created_at', { ascending: false });
-    if (data) setDeposits(data);
+    try {
+      const response = await fetch('/api/deposits');
+      const data = await response.json();
+      if (data && data.success) {
+        setDeposits(data.deposits || []);
+      }
+    } catch (err) {
+      console.error('Error fetching deposits:', err);
+    }
   };
 
   const fetchMessages = async () => {
-    const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
-    if (data) setMessages(data);
+    try {
+      const response = await fetch('/api/chat/messages');
+      const data = await response.json();
+      if (data && data.success) {
+        setMessages(data.messages || []);
+      }
+    } catch (err) {
+      console.error('Error fetching messages:', err);
+    }
   };
 
   // Enviar respuesta al chat seleccionado
@@ -86,18 +88,21 @@ export default function AdminPanel({ adminUser, onClose }) {
     setReplyText('');
 
     try {
-      const { error } = await supabase.from('messages').insert([
-        {
+      const response = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           chat_id: selectedChatId,
           sender: 'admin',
           sender_name: 'Administrador',
           text: messageToSend
-        }
-      ]);
+        })
+      });
 
-      if (error) {
-        console.error(error);
+      if (!response.ok) {
         alert('Error al enviar el mensaje.');
+      } else {
+        fetchMessages();
       }
     } catch (err) {
       console.error(err);
@@ -109,41 +114,27 @@ export default function AdminPanel({ adminUser, onClose }) {
     if (!confirm(`¿Estás seguro de APROBAR el depósito de $${deposit.amount} USD para ${deposit.username}?`)) return;
 
     try {
-      // 1. Marcar el depósito como aprobado
-      const { error: depError } = await supabase
-        .from('deposits')
-        .update({ status: 'approved' })
-        .eq('id', deposit.id);
+      const response = await fetch('/api/deposits', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deposit_id: deposit.id,
+          status: 'approved'
+        })
+      });
 
-      if (depError) throw depError;
+      const data = await response.json();
 
-      // 2. Obtener los créditos actuales del usuario
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('credits')
-        .eq('email', deposit.email)
-        .single();
-
-      if (userError) throw userError;
-
-      const currentCredits = parseFloat(userData.credits || 0);
-      const addedCredits = parseFloat(deposit.amount);
-      const newCredits = (currentCredits + addedCredits).toFixed(2);
-
-      // 3. Acreditar el saldo al usuario
-      const { error: creditError } = await supabase
-        .from('users')
-        .update({ credits: newCredits })
-        .eq('email', deposit.email);
-
-      if (creditError) throw creditError;
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al aprobar depósito.');
+      }
 
       alert('¡Depósito aprobado y créditos acreditados con éxito!');
       fetchData();
 
     } catch (err) {
       console.error(err);
-      alert('Ocurrió un error al procesar la aprobación.');
+      alert(err.message || 'Ocurrió un error al procesar la aprobación.');
     }
   };
 
@@ -152,18 +143,26 @@ export default function AdminPanel({ adminUser, onClose }) {
     if (!confirm('¿Estás seguro de RECHAZAR este depósito?')) return;
 
     try {
-      const { error } = await supabase
-        .from('deposits')
-        .update({ status: 'rejected' })
-        .eq('id', depositId);
+      const response = await fetch('/api/deposits', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deposit_id: depositId,
+          status: 'rejected'
+        })
+      });
 
-      if (error) throw error;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al rechazar depósito.');
+      }
 
       alert('Depósito rechazado.');
-      fetchDeposits();
+      fetchData();
     } catch (err) {
       console.error(err);
-      alert('Error al rechazar depósito.');
+      alert(err.message || 'Error al rechazar depósito.');
     }
   };
 

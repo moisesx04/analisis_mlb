@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, CreditCard, ArrowLeft, Upload, ShieldCheck, Coins, HelpCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+// import { supabase } from '../lib/supabase';
 
 export default function ChatWidget({ user, onUpdateCredits }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,30 +20,19 @@ export default function ChatWidget({ user, onUpdateCredits }) {
 
   const chatEndRef = useRef(null);
 
-  // 1. Cargar mensajes iniciales y suscribirse a cambios en tiempo real
+  // 1. Cargar mensajes iniciales y consultar periódicamente (polling) cada 3 segundos
   useEffect(() => {
     if (!user || !isOpen) return;
 
     fetchMessages();
 
-    // Suscribirse al canal en tiempo real para este chat_id
-    const channel = supabase
-      .channel(`chat-${user.email}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${user.email}` },
-        (payload) => {
-          setMessages(prev => {
-            // Evitar agregar duplicados
-            if (prev.some(m => m.id === payload.new.id)) return prev;
-            return [...prev, payload.new];
-          });
-        }
-      )
-      .subscribe();
+    // Polling interval to check for new messages every 3 seconds
+    const interval = setInterval(() => {
+      fetchMessages();
+    }, 3000);
 
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, [user, isOpen]);
 
@@ -54,18 +43,18 @@ export default function ChatWidget({ user, onUpdateCredits }) {
   }, [messages, step]);
 
   const fetchMessages = async () => {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('chat_id', user.email)
-      .order('created_at', { ascending: true });
-
-    if (data) {
-      setMessages(data);
-      // Si ya hay historial de mensajes de depósito o chat, cambiamos el step a chat libre
-      if (data.length > 0) {
-        setStep('welcome');
+    try {
+      const response = await fetch(`/api/chat/messages?chat_id=${encodeURIComponent(user.email)}`);
+      const data = await response.json();
+      if (data && data.success) {
+        setMessages(data.messages || []);
+        // Si ya hay historial de mensajes de depósito o chat, cambiamos el step a welcome
+        if (data.messages && data.messages.length > 0) {
+          setStep('welcome');
+        }
       }
+    } catch (err) {
+      console.error('Error fetching messages:', err);
     }
   };
 
@@ -74,40 +63,95 @@ export default function ChatWidget({ user, onUpdateCredits }) {
 
     if (option === 'deposit') {
       setStep('deposit_info');
-      // Registrar selección en la base de datos
-      await supabase.from('messages').insert([
-        { chat_id: user.email, sender: 'user', sender_name: user.username, text: '💰 Recargar Créditos / Depositar' },
-        {
-          chat_id: user.email,
-          sender: 'bot',
-          sender_name: 'Asistente',
-          text: `Excelente decisión. Para comprar créditos de análisis, realiza el pago en cualquiera de las siguientes opciones:\n\n` +
-            `• 🏦 **Banco Nacional:** Cta: 1234-5678-9012 (A nombre de Juan Pérez • Ahorros)\n` +
-            `• 💳 **Binance Pay ID:** 987654321 (Enviar USDT)\n` +
-            `• 📧 **PayPal:** pagos@analistamlb.com (Enviar como familiar/amigo)\n\n` +
-            `Una vez realizado, pulsa el botón de abajo para registrar tu comprobante.`
-        }
-      ]);
+      
+      // Registrar selección en la base de datos a través de API
+      try {
+        await fetch('/api/chat/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: user.email,
+            sender: 'user',
+            sender_name: user.username,
+            text: '💰 Recargar Créditos / Depositar'
+          })
+        });
+
+        await fetch('/api/chat/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: user.email,
+            sender: 'bot',
+            sender_name: 'Asistente',
+            text: `Excelente decisión. Para comprar créditos de análisis, realiza el pago en cualquiera de las siguientes opciones:\n\n` +
+              `• 🏦 **Banco Nacional:** Cta: 1234-5678-9012 (A nombre de Juan Pérez • Ahorros)\n` +
+              `• 💳 **Binance Pay ID:** 987654321 (Enviar USDT)\n` +
+              `• 📧 **PayPal:** pagos@analistamlb.com (Enviar como familiar/amigo)\n\n` +
+              `Una vez realizado, pulsa el botón de abajo para registrar tu comprobante.`
+          })
+        });
+
+        fetchMessages();
+      } catch (err) {
+        console.error(err);
+      }
     } else if (option === 'how_it_works') {
-      await supabase.from('messages').insert([
-        { chat_id: user.email, sender: 'user', sender_name: user.username, text: '❓ ¿Cómo funcionan las predicciones?' },
-        {
-          chat_id: user.email,
-          sender: 'bot',
-          sender_name: 'Asistente',
-          text: 'Nuestro sistema recopila estadísticas en tiempo real de MLB Stats y ESPN API. Evaluamos el estadio, clima, lanzadores abridores y rotaciones de bateo para calcular el porcentaje lógico de probabilidad de victoria y riesgo (Bajo, Medio, Alto). \n\n¡Los partidos de Bajo Riesgo tienen más de un 80% de efectividad histórica!'
-        }
-      ]);
+      try {
+        await fetch('/api/chat/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: user.email,
+            sender: 'user',
+            sender_name: user.username,
+            text: '❓ ¿Cómo funcionan las predicciones?'
+          })
+        });
+
+        await fetch('/api/chat/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: user.email,
+            sender: 'bot',
+            sender_name: 'Asistente',
+            text: 'Nuestro sistema recopila estadísticas en tiempo real de MLB Stats y ESPN API. Evaluamos el estadio, clima, lanzadores abridores y rotaciones de bateo para calcular el porcentaje lógico de probabilidad de victoria y riesgo (Bajo, Medio, Alto). \n\n¡Los partidos de Bajo Riesgo tienen más de un 80% de efectividad histórica!'
+          })
+        });
+
+        fetchMessages();
+      } catch (err) {
+        console.error(err);
+      }
     } else if (option === 'support') {
-      await supabase.from('messages').insert([
-        { chat_id: user.email, sender: 'user', sender_name: user.username, text: '👤 Soporte Técnico' },
-        {
-          chat_id: user.email,
-          sender: 'bot',
-          sender_name: 'Asistente',
-          text: 'Si tienes problemas con la plataforma o alguna duda con tu cuenta, puedes escribir directamente a nuestro administrador de soporte técnico en WhatsApp o enviar un correo electrónico a soporte@analistamlb.com. ¡Estamos activos 24/7!'
-        }
-      ]);
+      try {
+        await fetch('/api/chat/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: user.email,
+            sender: 'user',
+            sender_name: user.username,
+            text: '👤 Soporte Técnico'
+          })
+        });
+
+        await fetch('/api/chat/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: user.email,
+            sender: 'bot',
+            sender_name: 'Asistente',
+            text: 'Si tienes problemas con la plataforma o alguna duda con tu cuenta, puedes escribir directamente a nuestro administrador de soporte técnico en WhatsApp o enviar un correo electrónico a soporte@analistamlb.com. ¡Estamos activos 24/7!'
+          })
+        });
+
+        fetchMessages();
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
@@ -126,18 +170,21 @@ export default function ChatWidget({ user, onUpdateCredits }) {
     setInputText('');
 
     try {
-      const { error } = await supabase.from('messages').insert([
-        {
+      const response = await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           chat_id: user.email,
           sender: 'user',
           sender_name: user.username,
           text: textToSend
-        }
-      ]);
+        })
+      });
 
-      if (error) {
-        console.error(error);
+      if (!response.ok) {
         alert('Error al enviar el mensaje.');
+      } else {
+        fetchMessages();
       }
     } catch (err) {
       console.error(err);
@@ -156,7 +203,7 @@ export default function ChatWidget({ user, onUpdateCredits }) {
     setStep('loading');
 
     try {
-      // 1. Enviar comprobante real al endpoint backend para alertas Discord/Telegram
+      // 1. Enviar comprobante al endpoint backend para alertas Discord/Telegram
       await fetch('/api/support/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -170,26 +217,27 @@ export default function ChatWidget({ user, onUpdateCredits }) {
         })
       });
 
-      // 2. Registrar el depósito en la tabla de Supabase
-      const { error: insertError } = await supabase
-        .from('deposits')
-        .insert([
-          {
-            username: user.username,
-            email: user.email,
-            amount: parseFloat(amount),
-            reference,
-            method,
-            notes,
-            status: 'pending'
-          }
-        ]);
+      // 2. Registrar el depósito en Neon DB a través del API
+      const response = await fetch('/api/deposits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: user.username,
+          email: user.email,
+          amount: parseFloat(amount),
+          reference,
+          method,
+          notes
+        })
+      });
 
-      if (insertError) throw insertError;
+      if (!response.ok) throw new Error('Error al registrar depósito.');
 
-      // 3. Registrar mensaje automático en el chat para avisar del depósito en el historial
-      await supabase.from('messages').insert([
-        {
+      // 3. Registrar mensaje automático en el chat
+      await fetch('/api/chat/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           chat_id: user.email,
           sender: 'user',
           sender_name: user.username,
@@ -198,10 +246,11 @@ export default function ChatWidget({ user, onUpdateCredits }) {
             `• Monto: $${amount} USD\n` +
             `• Ref: ${reference}\n` +
             `• Comentarios: ${notes || 'Sin comentarios.'}`
-        }
-      ]);
+        })
+      });
 
       setStep('success');
+      fetchMessages();
 
     } catch (err) {
       console.error(err);
