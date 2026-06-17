@@ -39,6 +39,22 @@ export default function RootLayout({ children }) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const theme = localStorage.getItem('mlb_theme');
+                  if (theme === 'light') {
+                    document.documentElement.classList.add('light-theme');
+                  } else {
+                    document.documentElement.classList.remove('light-theme');
+                  }
+                } catch (e) {}
+              })();
+            `
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

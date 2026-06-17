@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Mail, Lock, User, Activity, Eye, EyeOff, LogIn } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Lock, User, Activity, Eye, EyeOff, LogIn, Sun, Moon } from 'lucide-react';
 
 export default function AuthScreen({ onSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [isLightTheme, setIsLightTheme] = useState(false);
   
   // Form values
   const [username, setUsername] = useState('');
@@ -15,6 +16,23 @@ export default function AuthScreen({ onSuccess }) {
   // Error / Loading states
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const isLight = document.documentElement.classList.contains('light-theme');
+    setIsLightTheme(isLight);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = !isLightTheme;
+    setIsLightTheme(nextTheme);
+    if (nextTheme) {
+      document.documentElement.classList.add('light-theme');
+      localStorage.setItem('mlb_theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+      localStorage.setItem('mlb_theme', 'dark');
+    }
+  };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
@@ -72,11 +90,37 @@ export default function AuthScreen({ onSuccess }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'radial-gradient(circle at 50% 50%, hsl(222, 47%, 8%) 0%, hsl(222, 47%, 3%) 100%)',
+      background: 'var(--bg-auth-screen)',
       padding: '20px',
       position: 'relative',
       overflow: 'hidden'
     }}>
+      {/* Botón de cambio de tema floating */}
+      <button 
+        type="button"
+        onClick={toggleTheme}
+        style={{
+          position: 'absolute',
+          top: '20px',
+          right: '20px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-glass)',
+          borderRadius: '50%',
+          width: '44px',
+          height: '44px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          color: 'var(--text-primary)',
+          boxShadow: 'var(--shadow-premium)',
+          zIndex: 100,
+          transition: 'var(--transition-smooth)'
+        }}
+        title="Cambiar tema"
+      >
+        {isLightTheme ? <Moon style={{ width: '20px', height: '20px' }} /> : <Sun style={{ width: '20px', height: '20px' }} />}
+      </button>
       {/* Luces y efectos decorativos de estadio de béisbol de fondo */}
       <div style={{
         position: 'absolute',

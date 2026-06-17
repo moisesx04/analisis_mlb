@@ -1,10 +1,28 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Activity, Calendar, ShieldCheck, Zap, LogIn, LogOut, User } from 'lucide-react';
+import { Activity, Calendar, ShieldCheck, Zap, LogOut, User, Sun, Moon } from 'lucide-react';
 
-export default function Header({ totalGames, lowRiskCount, user, onOpenAuth, onLogout }) {
+export default function Header({ totalGames, lowRiskCount, user, onLogout }) {
   const [timeStr, setTimeStr] = useState('');
+  const [isLightTheme, setIsLightTheme] = useState(false);
+
+  useEffect(() => {
+    const isLight = document.documentElement.classList.contains('light-theme');
+    setIsLightTheme(isLight);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = !isLightTheme;
+    setIsLightTheme(nextTheme);
+    if (nextTheme) {
+      document.documentElement.classList.add('light-theme');
+      localStorage.setItem('mlb_theme', 'light');
+    } else {
+      document.documentElement.classList.remove('light-theme');
+      localStorage.setItem('mlb_theme', 'dark');
+    }
+  };
 
   useEffect(() => {
     const updateTime = () => {
@@ -60,15 +78,26 @@ export default function Header({ totalGames, lowRiskCount, user, onOpenAuth, onL
         </div>
 
         {/* Sección de Autenticación */}
-        {user ? (
+        {user && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', border: 'none', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px' }}>
+            {/* Botón de Cambio de Tema (Modo Claro/Oscuro) */}
+            <button 
+              className="btn-secondary" 
+              onClick={toggleTheme}
+              style={{ padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Cambiar Tema"
+            >
+              {isLightTheme ? <Moon style={{ width: '16px', height: '16px' }} /> : <Sun style={{ width: '16px', height: '16px' }} />}
+            </button>
+
+            <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', border: 'none', background: 'var(--bg-input)', borderRadius: '12px' }}>
               <User style={{ color: 'var(--color-primary)', width: '18px', height: '18px' }} />
               <div>
                 <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Usuario</span>
                 <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{user.username}</span>
               </div>
             </div>
+            
             <button 
               className="btn-secondary" 
               onClick={onLogout}
@@ -78,15 +107,6 @@ export default function Header({ totalGames, lowRiskCount, user, onOpenAuth, onL
               <LogOut style={{ width: '16px', height: '16px', color: 'var(--color-high-risk)' }} />
             </button>
           </div>
-        ) : (
-          <button 
-            className="btn-primary" 
-            onClick={onOpenAuth}
-            style={{ padding: '10px 16px', borderRadius: '12px', fontSize: '0.85rem' }}
-          >
-            <LogIn style={{ width: '16px', height: '16px' }} />
-            Iniciar Sesión
-          </button>
         )}
       </div>
     </header>
