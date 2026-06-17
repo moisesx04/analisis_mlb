@@ -9,6 +9,26 @@ import {
 export default function TeamCompareModal({ game, onClose }) {
   if (!game) return null;
 
+  if (game.unlocked === false) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div 
+          className="modal-content glass-panel" 
+          style={{ border: '1px solid rgba(255, 255, 255, 0.12)', background: 'hsl(222, 47%, 6%)', maxWidth: '450px', padding: '30px', textAlign: 'center' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '12px' }}>🔒 Pronóstico VIP Bloqueado</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>
+            Desbloquea este partido desde la cartelera principal usando tus créditos para poder ver el análisis H2H avanzado.
+          </p>
+          <button className="btn-primary" onClick={onClose} style={{ margin: '0 auto', fontSize: '0.8rem', padding: '8px 20px' }}>
+            Cerrar Ventana
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const { homeTeam, awayTeam, pitchers, odds, prediction, expandedPlays, stadium, climate } = game;
 
   const homeWinPct = Math.round(homeTeam.winPct * 100);

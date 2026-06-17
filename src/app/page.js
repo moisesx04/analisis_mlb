@@ -108,6 +108,39 @@ export default function Home() {
     localStorage.removeItem('mlb_active_user');
   };
 
+  const handleUnlockBestPlay = async () => {
+    if (!user || !bestPlayOfDay) return;
+    const credits = parseFloat(user.credits || 0);
+    if (credits < 10) {
+      alert('Créditos insuficientes. Por favor realiza una recarga enviando un comprobante en el menú de soporte (burbuja de chat abajo a la derecha).');
+      return;
+    }
+    
+    if (!confirm(`¿Deseas desbloquear el pronóstico de ${bestPlayOfDay.awayTeam.abbrev} @ ${bestPlayOfDay.homeTeam.abbrev} por 10 créditos ($1.00 USD)?`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/predictions/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, game_id: bestPlayOfDay.id })
+      });
+      const data = await response.json();
+      
+      if (!response.ok || data.success === false) {
+        alert(data.error || 'Ocurrió un error al desbloquear el pronóstico.');
+      } else {
+        const updatedUser = { ...user, credits: data.credits };
+        handleUpdateCredits(updatedUser);
+        fetchPredictions(date); // Refrescar cartelera
+      }
+    } catch (err) {
+      console.error('Error unlocking best play:', err);
+      alert('Error de red al intentar desbloquear el pronóstico.');
+    }
+  };
+
   const fetchPredictions = useCallback(async (targetDate) => {
     setLoading(true);
     setError(null);
@@ -324,50 +357,97 @@ export default function Home() {
 
         {/* Panel: Jugada Estrella del Día (Mayor Confianza) */}
         {bestPlayOfDay && (
-          <div className="glass-panel" style={{ 
-            padding: '24px', 
-            background: 'linear-gradient(135deg, hsla(217, 91%, 60%, 0.06) 0%, hsla(270, 91%, 60%, 0.02) 100%)',
-            borderColor: 'rgba(59, 130, 246, 0.25)',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: '12px'
-          }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Sparkles style={{ width: '14px', height: '14px', fill: 'var(--color-primary)' }} />
-                  Recomendación Principal del Día
-                </span>
-                <span className="badge" style={{ borderColor: 'rgba(59, 130, 246, 0.3)', color: 'var(--color-primary)', fontWeight: 700 }}>
-                  Confianza: {bestPlayOfDay.prediction.confidence}%
-                </span>
+          bestPlayOfDay.unlocked === false ? (
+            <div className="glass-panel" style={{ 
+              padding: '24px', 
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
+              borderColor: 'rgba(59, 130, 246, 0.15)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles style={{ width: '14px', height: '14px', color: 'var(--text-muted)' }} />
+                    Recomendación Principal del Día
+                  </span>
+                  <span className="badge" style={{ borderColor: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                    🔒 VIP
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '6px 0', color: 'var(--text-secondary)' }}>
+                  🔒 Análisis Principal Bloqueado
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+                  La recomendación con mayor índice de confianza de la Mesa está reservada para miembros VIP. Desbloquea este partido para revelar la jugada.
+                </p>
               </div>
-              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '6px 0', color: 'var(--text-primary)' }}>
-                {bestPlayOfDay.prediction.bestPlay}
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                {bestPlayOfDay.prediction.details}
-              </p>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src={bestPlayOfDay.awayTeam.logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bestPlayOfDay.awayTeam.abbrev}</span>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@</span>
-                <img src={bestPlayOfDay.homeTeam.logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bestPlayOfDay.homeTeam.abbrev}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img src={bestPlayOfDay.awayTeam.logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bestPlayOfDay.awayTeam.abbrev}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@</span>
+                  <img src={bestPlayOfDay.homeTeam.logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bestPlayOfDay.homeTeam.abbrev}</span>
+                </div>
+                <button 
+                  className="btn-primary" 
+                  style={{ fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px' }}
+                  onClick={handleUnlockBestPlay}
+                >
+                  Desbloquear para Ver (10 🪙)
+                </button>
               </div>
-              <button 
-                className="btn-primary" 
-                style={{ fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px' }}
-                onClick={() => setSelectedGame(bestPlayOfDay)}
-              >
-                Ver Análisis Completo
-              </button>
             </div>
-          </div>
+          ) : (
+            <div className="glass-panel" style={{ 
+              padding: '24px', 
+              background: 'linear-gradient(135deg, hsla(217, 91%, 60%, 0.06) 0%, hsla(270, 91%, 60%, 0.02) 100%)',
+              borderColor: 'rgba(59, 130, 246, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles style={{ width: '14px', height: '14px', fill: 'var(--color-primary)' }} />
+                    Recomendación Principal del Día
+                  </span>
+                  <span className="badge" style={{ borderColor: 'rgba(59, 130, 246, 0.3)', color: 'var(--color-primary)', fontWeight: 700 }}>
+                    Confianza: {bestPlayOfDay.prediction.confidence}%
+                  </span>
+                </div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '6px 0', color: 'var(--text-primary)' }}>
+                  {bestPlayOfDay.prediction.bestPlay}
+                </h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                  {bestPlayOfDay.prediction.details}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img src={bestPlayOfDay.awayTeam.logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bestPlayOfDay.awayTeam.abbrev}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@</span>
+                  <img src={bestPlayOfDay.homeTeam.logo} alt="" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bestPlayOfDay.homeTeam.abbrev}</span>
+                </div>
+                <button 
+                  className="btn-primary" 
+                  style={{ fontSize: '0.75rem', padding: '6px 12px', borderRadius: '6px' }}
+                  onClick={() => setSelectedGame(bestPlayOfDay)}
+                >
+                  Ver Análisis Completo
+                </button>
+              </div>
+            </div>
+          )
         )}
       </div>
 
