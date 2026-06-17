@@ -23,6 +23,7 @@ export default function Home() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [adminNotifyCount, setAdminNotifyCount] = useState(0);
 
   useEffect(() => {
     const activeUser = localStorage.getItem('mlb_active_user');
@@ -31,6 +32,33 @@ export default function Home() {
     }
     setAuthChecked(true);
   }, []);
+
+  // Polling para notificaciones de administrador
+  useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      setAdminNotifyCount(0);
+      return;
+    }
+
+    const fetchNotificationsCount = async () => {
+      try {
+        const response = await fetch('/api/admin/notifications');
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.success) {
+            setAdminNotifyCount(data.total || 0);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching admin notifications:', err);
+      }
+    };
+
+    fetchNotificationsCount();
+    const interval = setInterval(fetchNotificationsCount, 5000);
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Polling para mantener actualizados los créditos y rol del usuario
   useEffect(() => {
@@ -153,6 +181,7 @@ export default function Home() {
         user={user}
         onLogout={handleLogout}
         onOpenAdmin={() => setShowAdminPanel(true)}
+        adminNotifyCount={adminNotifyCount}
       />
 
       {/* Grid Superior: Controles de Fecha y Destacados */}

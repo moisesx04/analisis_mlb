@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Coins, MessageSquare, ShieldCheck, X, Send, Check, AlertTriangle, Clock, ArrowRight, Search, User } from 'lucide-react';
+import { Coins, MessageSquare, ShieldCheck, X, Send, Check, AlertTriangle, Clock, ArrowRight, Search, User, SlidersHorizontal, ArrowLeft } from 'lucide-react';
 // import { supabase } from '../lib/supabase';
 
 export default function AdminPanel({ adminUser, onClose }) {
@@ -166,6 +166,31 @@ export default function AdminPanel({ adminUser, onClose }) {
     }
   };
 
+  // Actualizar rol y/o créditos de un usuario
+  const handleUpdateUser = async (userId, newRole, newCredits) => {
+    try {
+      const response = await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          role: newRole,
+          credits: parseFloat(newCredits)
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al actualizar usuario.');
+      }
+      alert('¡Usuario actualizado correctamente!');
+      fetchUsers();
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Error al actualizar usuario.');
+    }
+  };
+
   // Agrupar mensajes para sacar la lista de chats activos
   const getActiveChats = () => {
     const chatsMap = {};
@@ -201,30 +226,13 @@ export default function AdminPanel({ adminUser, onClose }) {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1100 }}>
-      <div className="glass-panel" style={{
-        width: '100%',
-        maxWidth: '1000px',
-        height: '85vh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'hsl(222, 47%, 6%)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '24px',
-        overflow: 'hidden'
-      }}>
+      <div className="admin-modal-panel">
         
         {/* Cabecera del Panel */}
-        <div style={{
-          padding: '20px 24px',
-          borderBottom: '1px solid var(--border-glass)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="admin-header">
+          <div className="admin-header-title">
             <div style={{ background: 'var(--color-primary-glow)', padding: '6px', borderRadius: '8px' }}>
-              <Coins style={{ color: 'var(--color-primary)', width: '22px', height: '22px' }} />
+              <ShieldCheck style={{ color: 'var(--color-primary)', width: '22px', height: '22px' }} />
             </div>
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Consola de Administración</h2>
@@ -233,28 +241,27 @@ export default function AdminPanel({ adminUser, onClose }) {
           </div>
           
           {/* Tabs del Panel */}
-          <div style={{ display: 'flex', background: 'rgba(255,255,255,0.02)', padding: '3px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+          <div className="admin-tabs-container">
             <button
               onClick={() => setActiveTab('chats')}
-              style={{
-                padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
-                background: activeTab === 'chats' ? 'rgba(255, 255, 255, 0.08)' : 'none',
-                color: activeTab === 'chats' ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
+              className={`admin-tab-btn ${activeTab === 'chats' ? 'active' : ''}`}
             >
-              <MessageSquare style={{ width: '14px', height: '14px', marginRight: '6px', display: 'inline' }} />
+              <MessageSquare style={{ width: '14px', height: '14px' }} />
               Chats en Vivo ({activeChats.length})
             </button>
             <button
               onClick={() => setActiveTab('deposits')}
-              style={{
-                padding: '8px 16px', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem',
-                background: activeTab === 'deposits' ? 'rgba(255, 255, 255, 0.08)' : 'none',
-                color: activeTab === 'deposits' ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
+              className={`admin-tab-btn ${activeTab === 'deposits' ? 'active' : ''}`}
             >
-              <Coins style={{ width: '14px', height: '14px', marginRight: '6px', display: 'inline' }} />
+              <Coins style={{ width: '14px', height: '14px' }} />
               Depósitos ({deposits.filter(d => d.status === 'pending').length} pendientes)
+            </button>
+            <button
+              onClick={() => setActiveTab('config')}
+              className={`admin-tab-btn ${activeTab === 'config' ? 'active' : ''}`}
+            >
+              <SlidersHorizontal style={{ width: '14px', height: '14px' }} />
+              Ajustes ({users.length})
             </button>
           </div>
 
@@ -269,12 +276,12 @@ export default function AdminPanel({ adminUser, onClose }) {
           {loading ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
               <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Cargando datos de Supabase...</span>
+              <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Cargando datos de Neon DB...</span>
             </div>
           ) : activeTab === 'chats' ? (
-            <>
+            <div className="admin-split-layout">
               {/* LISTA DE CHATS ACTIVAS (IZQUIERDA) */}
-              <div style={{ width: '320px', borderRight: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.1)' }}>
+              <div className={`admin-chat-sidebar ${selectedChatId ? 'hide-mobile' : ''}`}>
                 <div style={{ padding: '16px', borderBottom: '1px solid var(--border-glass)' }}>
                   <div style={{ position: 'relative' }}>
                     <input
@@ -330,11 +337,22 @@ export default function AdminPanel({ adminUser, onClose }) {
               </div>
 
               {/* CONVERSACIÓN (DERECHA) */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.05)' }}>
+              <div className={`admin-chat-content ${!selectedChatId ? 'hide-mobile' : ''}`}>
                 {selectedChatId ? (
                   <>
                     {/* Info de contacto */}
                     <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-glass)', background: 'rgba(255,255,255,0.01)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button 
+                        onClick={() => setSelectedChatId(null)}
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)',
+                          padding: '4px', marginRight: '4px'
+                        }}
+                        className="show-mobile-inline"
+                        title="Volver a los chats"
+                      >
+                        <ArrowLeft style={{ width: '20px', height: '20px' }} />
+                      </button>
                       <div style={{ backgroundColor: 'var(--color-primary-glow)', padding: '8px', borderRadius: '50%' }}>
                         <User style={{ color: 'var(--color-primary)', width: '18px', height: '18px' }} />
                       </div>
@@ -395,14 +413,14 @@ export default function AdminPanel({ adminUser, onClose }) {
                 ) : (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', color: 'var(--text-muted)' }}>
                     <MessageSquare style={{ width: '48px', height: '48px', opacity: 0.3 }} />
-                    <span style={{ fontSize: '0.9rem' }}>Selecciona un chat de la izquierda para comenzar a conversar.</span>
+                    <span style={{ fontSize: '0.9rem', textAlign: 'center', padding: '0 20px' }}>Selecciona un chat de la izquierda para comenzar a conversar.</span>
                   </div>
                 )}
               </div>
-            </>
-          ) : (
+            </div>
+          ) : activeTab === 'deposits' ? (
             /* LISTADO DE DEPÓSITOS (DERECHA) */
-            <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="deposit-list-container">
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Historial de Depósitos Recientes</h3>
               
               {deposits.length === 0 ? (
@@ -414,14 +432,8 @@ export default function AdminPanel({ adminUser, onClose }) {
                   {deposits.map(dep => (
                     <div
                       key={dep.id}
-                      className="glass-panel"
+                      className="deposit-card-item"
                       style={{
-                        padding: '20px',
-                        background: 'rgba(255,255,255,0.01)',
-                        display: 'grid',
-                        gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1.5fr',
-                        alignItems: 'center',
-                        gap: '16px',
                         borderColor: dep.status === 'approved' ? 'rgba(34, 197, 94, 0.15)' : dep.status === 'rejected' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.05)'
                       }}
                     >
@@ -456,7 +468,7 @@ export default function AdminPanel({ adminUser, onClose }) {
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      <div className="deposit-card-actions" style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         {dep.status === 'pending' ? (
                           <>
                             <button
@@ -486,6 +498,74 @@ export default function AdminPanel({ adminUser, onClose }) {
                 </div>
               )}
             </div>
+          ) : (
+            /* TAB CONFIGURACIONES (AJUSTES Y USUARIOS) */
+            <div className="user-list-container">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '8px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800 }}>Gestión de Usuarios</h3>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>Modifica roles, añade/resta créditos y consulta registros en Neon DB</p>
+                </div>
+                
+                {/* Buscador de usuarios */}
+                <div style={{ position: 'relative', width: '100%', maxWidth: '280px' }}>
+                  <input
+                    type="text"
+                    placeholder="Buscar usuario o correo..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%', padding: '10px 10px 10px 34px', background: 'var(--bg-input)',
+                      border: '1px solid var(--border-glass)', borderRadius: '10px', color: 'var(--text-primary)', fontSize: '0.8rem', outline: 'none'
+                    }}
+                  />
+                  <Search style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: 'var(--text-muted)' }} />
+                </div>
+              </div>
+
+              {/* Lista de usuarios */}
+              {users.length === 0 ? (
+                <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Cargando usuarios...
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {users
+                    .filter(u => 
+                      u.username.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                      u.email.toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                    .map(u => (
+                      <UserEditRow 
+                        key={u.id} 
+                        user={u} 
+                        onSave={handleUpdateUser} 
+                      />
+                    ))}
+                </div>
+              )}
+              
+              {/* Sección de Integración de Notificaciones (Webhooks) */}
+              <div className="glass-panel" style={{ padding: '20px', marginTop: '20px', background: 'rgba(59, 130, 246, 0.02)', borderColor: 'rgba(59, 130, 246, 0.15)' }}>
+                <h4 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <ShieldCheck style={{ width: '18px', height: '18px', color: 'var(--color-primary)' }} />
+                  Estado de Webhooks de Notificación
+                </h4>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: '1.4' }}>
+                  Las alertas de nuevos depósitos se envían automáticamente a Discord y Telegram si configuras las variables en el panel de Vercel.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }}></span>
+                    <span>Discord Webhook: <strong>Activo (Si está configurado)</strong></span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e' }}></span>
+                    <span>Telegram Bot: <strong>Activo (Si está configurado)</strong></span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
         </div>
@@ -498,6 +578,63 @@ export default function AdminPanel({ adminUser, onClose }) {
           100% { transform: rotate(360deg); }
         }
       `}</style>
+    </div>
+  );
+}
+
+// Subcomponente para la edición interactiva de cada fila de usuario sin perder el foco
+function UserEditRow({ user, onSave }) {
+  const [credits, setCredits] = useState(parseFloat(user.credits || 0).toFixed(2));
+  const [role, setRole] = useState(user.role || 'user');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(user.id, role, credits);
+    setSaving(false);
+  };
+
+  return (
+    <div className="user-card-item">
+      <div>
+        <strong style={{ display: 'block', fontSize: '0.85rem' }}>{user.username}</strong>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{user.email}</span>
+      </div>
+      
+      <div className="user-edit-row">
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Créditos:</span>
+        <input
+          type="number"
+          step="0.01"
+          value={credits}
+          onChange={(e) => setCredits(e.target.value)}
+          className="user-credits-input"
+        />
+      </div>
+
+      <div className="user-edit-row">
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Rol:</span>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="user-role-select"
+        >
+          <option value="user">Usuario</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+
+      <div className="user-card-actions" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          onClick={handleSave}
+          className="btn-primary"
+          disabled={saving}
+          style={{ padding: '8px 14px', fontSize: '0.75rem', borderRadius: '8px', boxShadow: 'none' }}
+        >
+          <Check style={{ width: '14px', height: '14px', marginRight: '4px', display: 'inline' }} />
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+      </div>
     </div>
   );
 }

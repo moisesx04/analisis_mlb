@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Calendar, ShieldCheck, Zap, LogOut, User, Sun, Moon, Coins } from 'lucide-react';
 
-export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpenAdmin }) {
+export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpenAdmin, adminNotifyCount = 0 }) {
   const [timeStr, setTimeStr] = useState('');
   const [isLightTheme, setIsLightTheme] = useState(false);
 
@@ -104,12 +104,34 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpe
                   fontSize: '0.85rem', 
                   fontWeight: 700,
                   boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
-                  background: 'linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(220, 90%, 50%) 100%)'
+                  background: 'linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(220, 90%, 50%) 100%)',
+                  position: 'relative'
                 }}
                 title="Panel de Administración"
               >
                 <ShieldCheck style={{ width: '16px', height: '16px' }} />
                 Administración
+                {adminNotifyCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-6px',
+                    backgroundColor: 'var(--color-high-risk)',
+                    color: '#ffffff',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    borderRadius: '50%',
+                    width: '18px',
+                    height: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '2px solid hsl(222, 47%, 6%)',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                  }}>
+                    {adminNotifyCount}
+                  </span>
+                )}
               </button>
             )}
 

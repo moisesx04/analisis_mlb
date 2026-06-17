@@ -375,3 +375,246 @@ h1, h2, h3, h4 {
   box-shadow: 0 0 12px var(--color-primary-glow) !important;
   background-color: rgba(255, 255, 255, 0.06) !important;
 }
+
+/* --- Admin Panel Responsive Styles --- */
+
+/* Modal layout base responsive */
+.admin-modal-panel {
+  width: 100%;
+  max-width: 1000px;
+  height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: hsl(222, 47%, 6%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  overflow: hidden;
+  transition: var(--transition-smooth);
+}
+
+.admin-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-glass);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, transparent 100%);
+}
+
+.admin-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-tabs-container {
+  display: flex;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 3px;
+  border-radius: 10px;
+  border: 1px solid var(--border-glass);
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.admin-tab-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.8rem;
+  background: none;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-smooth);
+}
+
+.admin-tab-btn.active {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+/* Chat view split layout */
+.admin-split-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.admin-chat-sidebar {
+  width: 320px;
+  border-right: 1px solid var(--border-glass);
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.admin-chat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.05);
+  min-width: 0;
+}
+
+/* Responsive media queries */
+@media (max-width: 850px) {
+  .admin-modal-panel {
+    height: 95vh;
+    border-radius: 16px;
+  }
+  
+  .admin-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+  
+  .admin-header-title {
+    justify-content: space-between;
+  }
+  
+  .admin-tabs-container {
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .admin-tab-btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.7rem;
+    padding: 8px 4px;
+  }
+
+  /* Responsive chat sidebar/content toggle */
+  .admin-chat-sidebar.hide-mobile {
+    display: none !important;
+  }
+  
+  .admin-chat-content.hide-mobile {
+    display: none !important;
+  }
+
+  .show-mobile-inline {
+    display: inline-flex !important;
+  }
+}
+
+.show-mobile-inline {
+  display: none !important;
+}
+
+/* Deposit list responsive layouts */
+.deposit-list-container {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deposit-card-item {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.01);
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1fr 1.5fr;
+  align-items: center;
+  gap: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border-glass);
+}
+
+@media (max-width: 768px) {
+  .deposit-list-container {
+    padding: 16px;
+  }
+  
+  .deposit-card-item {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+  
+  .deposit-card-actions {
+    justify-content: flex-start !important;
+    border-top: 1px solid var(--border-glass);
+    padding-top: 10px;
+    width: 100%;
+  }
+}
+
+/* User management (Configuraciones) responsive layout */
+.user-list-container {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-card-item {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.01);
+  display: grid;
+  grid-template-columns: 1.2fr 1.5fr 1fr 1.3fr;
+  align-items: center;
+  gap: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--border-glass);
+}
+
+.user-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-credits-input {
+  width: 90px;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-weight: 700;
+  outline: none;
+}
+
+.user-role-select {
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-glass);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .user-list-container {
+    padding: 16px;
+  }
+  
+  .user-card-item {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 16px;
+  }
+  
+  .user-card-actions {
+    justify-content: flex-start !important;
+    border-top: 1px solid var(--border-glass);
+    padding-top: 10px;
+    width: 100%;
+  }
+}
+
