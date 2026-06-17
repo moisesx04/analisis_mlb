@@ -35,23 +35,23 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpe
   }, []);
 
   return (
-    <header className="glass-panel" style={{ padding: '20px 24px', marginBottom: '30px', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center', borderRadius: '16px' }}>
+    <header className="glass-panel header-root" style={{ padding: '20px 24px', marginBottom: '30px', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center', borderRadius: '16px' }}>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
           <div style={{ backgroundColor: 'var(--color-primary-glow)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Activity className="text-accent-gradient" style={{ width: '24px', height: '24px' }} />
           </div>
-          <h1 className="text-gradient" style={{ fontSize: '1.8rem', fontWeight: 800 }}>CONSEJERO VIP MLB</h1>
+          <h1 className="text-gradient header-title-text" style={{ fontSize: '1.8rem', fontWeight: 800 }}>CONSEJERO VIP MLB</h1>
         </div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <p className="header-subtitle" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span className="pulse-live"></span>
           Mesa de Expertos en Las Vegas • Estadísticas y Tendencias Premium
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+      <div className="header-widgets" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
         {/* Widget 1: Partidos analizados */}
-        <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+        <div className="glass-panel header-widget-item" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
           <ShieldCheck style={{ color: 'var(--color-primary)', width: '20px', height: '20px' }} />
           <div>
             <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Partidos</span>
@@ -60,7 +60,7 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpe
         </div>
 
         {/* Widget 2: Jugadas seguras */}
-        <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
+        <div className="glass-panel header-widget-item" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
           <Zap style={{ color: 'var(--color-low-risk)', width: '20px', height: '20px' }} />
           <div>
             <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Bajo Riesgo</span>
@@ -69,7 +69,7 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpe
         </div>
 
         {/* Widget 3: Hora del sistema */}
-        <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', minWidth: '130px' }}>
+        <div className="glass-panel header-widget-item" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', minWidth: '130px' }}>
           <Calendar style={{ color: 'var(--text-secondary)', width: '20px', height: '20px' }} />
           <div>
             <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Hora Local</span>

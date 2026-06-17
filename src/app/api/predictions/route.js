@@ -215,7 +215,8 @@ function generateMockGames(dateStr) {
     let scoreHome = null;
     let scoreAway = null;
 
-    const isPastDate = dateStr < '2026-06-17';
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+    const isPastDate = dateStr < todayStr;
 
     if (isPastDate) {
       state = 'finished';

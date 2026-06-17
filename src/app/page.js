@@ -10,7 +10,8 @@ import AdminPanel from '../components/AdminPanel';
 import { Calendar, Search, SlidersHorizontal, RefreshCw, Sparkles, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
 
 export default function Home() {
-  const [date, setDate] = useState('2026-06-17'); // Inicializado en la fecha local simulada
+  const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+  const [date, setDate] = useState(todayDate); // Fecha local real del usuario
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -153,12 +154,31 @@ export default function Home() {
       const data = await response.json();
       setGames(data.games || []);
       
-      // Buscar la mejor jugada del día (la que tiene mayor porcentaje de confianza)
-      const sortedByConfidence = [...(data.games || [])].sort(
-        (a, b) => b.prediction.confidence - a.prediction.confidence
+      // La mejor jugada del día: solo de partidos que el usuario tenga desbloqueados
+      // (no finished - esos son auto-desbloqueados para historial, no deben contar como recomendación activa)
+      const todayLocal = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+      const isViewingToday = targetDate === todayLocal;
+
+      let bestPlayCandidates;
+      if (isViewingToday) {
+        // Solo juegos donde el usuario haya pagado (unlocked: true y NO finished)
+        bestPlayCandidates = (data.games || []).filter(
+          g => g.unlocked === true && g.status.state !== 'finished'
+        );
+        if (bestPlayCandidates.length === 0) {
+          // Si no hay ninguno desbloqueado, mostrar el panel bloqueado con el mejor candidato
+          bestPlayCandidates = (data.games || []).filter(
+            g => g.status.state !== 'finished'
+          );
+        }
+      } else {
+        // En fechas pasadas, mostrar historial libremente (todos están desbloqueados)
+        bestPlayCandidates = (data.games || []);
+      }
+
+      const sortedByConfidence = [...bestPlayCandidates].sort(
+        (a, b) => (b.prediction.confidence || 0) - (a.prediction.confidence || 0)
       );
-      
-      // Filtrar que la mejor jugada sea calificada de Bajo Riesgo si existe
       const lowRiskBest = sortedByConfidence.find(g => g.prediction.riskLevel === 'Bajo');
       setBestPlayOfDay(lowRiskBest || sortedByConfidence[0] || null);
 
@@ -176,7 +196,8 @@ export default function Home() {
 
   // Polling automático para la cartelera de hoy cada 30 segundos
   useEffect(() => {
-    if (date !== '2026-06-17') return;
+    const todayLocal = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' });
+    if (date !== todayLocal) return;
     const interval = setInterval(() => {
       fetchPredictions(date);
     }, 30000);
@@ -228,7 +249,7 @@ export default function Home() {
       />
 
       {/* Banner de historial de jugadas si es fecha pasada */}
-      {date < '2026-06-17' && (
+      {date < todayDate && (
         <div className="glass-panel" style={{ 
           padding: '16px 20px', 
           marginBottom: '24px', 
@@ -296,15 +317,15 @@ export default function Home() {
             {/* Accesos rápidos de fecha */}
             <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
               <button 
-                onClick={() => setDate('2026-06-17')}
+                onClick={() => setDate(todayDate)}
                 className="btn-secondary"
                 style={{ 
                   flex: 1, 
                   fontSize: '0.75rem', 
                   padding: '8px 6px',
-                  background: date === '2026-06-17' ? 'rgba(59, 130, 246, 0.15)' : 'none',
-                  borderColor: date === '2026-06-17' ? 'var(--color-primary)' : 'var(--border-glass)',
-                  color: date === '2026-06-17' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: date === todayDate ? 'rgba(59, 130, 246, 0.15)' : 'none',
+                  borderColor: date === todayDate ? 'var(--color-primary)' : 'var(--border-glass)',
+                  color: date === todayDate ? 'var(--text-primary)' : 'var(--text-secondary)',
                   justifyContent: 'center',
                   fontWeight: 700
                 }}
@@ -312,15 +333,19 @@ export default function Home() {
                 Hoy (En Vivo)
               </button>
               <button 
-                onClick={() => setDate('2026-06-16')}
+                onClick={() => {
+                  const yesterday = new Date();
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  setDate(yesterday.toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' }));
+                }}
                 className="btn-secondary"
                 style={{ 
                   flex: 1, 
                   fontSize: '0.75rem', 
                   padding: '8px 6px',
-                  background: date === '2026-06-16' ? 'rgba(59, 130, 246, 0.15)' : 'none',
-                  borderColor: date === '2026-06-16' ? 'var(--color-primary)' : 'var(--border-glass)',
-                  color: date === '2026-06-16' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: date === new Date(new Date().setDate(new Date().getDate()-1)).toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' }) ? 'rgba(59, 130, 246, 0.15)' : 'none',
+                  borderColor: date === new Date(new Date().setDate(new Date().getDate()-1)).toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' }) ? 'var(--color-primary)' : 'var(--border-glass)',
+                  color: date === new Date(new Date().setDate(new Date().getDate()-1)).toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' }) ? 'var(--text-primary)' : 'var(--text-secondary)',
                   justifyContent: 'center',
                   fontWeight: 700
                 }}
@@ -453,7 +478,7 @@ export default function Home() {
 
       {/* Tabs de Filtro de Riesgo */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+        <div className="risk-filter-tabs" style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
           <button 
             onClick={() => setRiskFilter('all')}
             style={{

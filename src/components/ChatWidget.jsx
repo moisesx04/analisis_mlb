@@ -89,11 +89,14 @@ export default function ChatWidget({ user, onUpdateCredits }) {
               `• 🪙 **20 Créditos** por **$2.00 USD**\n` +
               `• 🪙 **200 Créditos** por **$20.00 USD**\n` +
               `• 🪙 **1000 Créditos** por **$100.00 USD**\n\n` +
-              `🏦 **Métodos de Pago Disponibles:**\n` +
-              `• **Banco Nacional:** Cta: 1234-5678-9012 (A nombre de Juan Pérez • Ahorros)\n` +
-              `• **Binance Pay ID:** 987654321 (Enviar USDT)\n` +
-              `• **PayPal:** pagos@analistamlb.com (Enviar como familiar/amigo)\n\n` +
-              `Una vez realizado tu pago, pulsa el botón de abajo para registrar tu comprobante.`
+              `💳 **Datos para Transferencia / Depósito:**\n` +
+              `*(Todas son cuentas de ahorros)*\n\n` +
+              `🏦 **Banco de Reservas:** 2340141095\n` +
+              `🏦 **BHD León:** 24126860027\n` +
+              `🏦 **Banco Qik:** 1003321572\n` +
+              `💲 **PayPal:** moises0495@gmail.com\n\n` +
+              `👤 **Titular:** Moisés Francisco Cuevas\n\n` +
+              `📲 Una vez realizado el depósito, envía el comprobante por WhatsApp y luego regístralo aquí pulsando el botón de abajo.`
           })
         });
 

@@ -617,4 +617,221 @@ h1, h2, h3, h4 {
     width: 100%;
   }
 }
+/* =============================================
+   RESPONSIVE BREAKPOINTS
+   Mobile  : ≤ 480px
+   Tablet  : ≤ 768px
+   Laptop  : ≤ 1024px
+   Desktop : > 1024px (base styles above)
+============================================= */
 
+/* ── LAPTOP (≤ 1024px) ─────────────────────── */
+@media (max-width: 1024px) {
+  .dashboard-container {
+    max-width: 100%;
+    padding: 20px 20px;
+  }
+
+  .grid-predictions {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+
+  .admin-modal-panel {
+    max-width: 92vw;
+  }
+
+  .admin-chat-sidebar {
+    width: 270px;
+  }
+}
+
+/* ── TABLET (≤ 768px) ──────────────────────── */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 14px 14px;
+  }
+
+  .grid-predictions {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  /* Header – stack logo + widgets vertically */
+  .header-root {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 14px !important;
+    padding: 16px !important;
+  }
+
+  .header-widgets {
+    flex-wrap: wrap;
+    gap: 10px !important;
+  }
+
+  .header-widget-item {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 130px;
+  }
+
+  /* Modal full-screen on tablet */
+  .modal-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 20px 20px 0 0;
+  }
+
+  /* Admin split: sidebar hidden, content full width */
+  .admin-modal-panel {
+    max-width: 100%;
+    height: 92vh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .admin-split-layout {
+    flex-direction: column;
+  }
+
+  .admin-chat-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-glass);
+    max-height: 200px;
+  }
+
+  /* Risk filter tabs – scrollable row */
+  .risk-filter-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px;
+  }
+
+  .risk-filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Glass panel padding tighter */
+  .glass-panel {
+    border-radius: 14px;
+  }
+}
+
+/* ── MOBILE (≤ 480px) ──────────────────────── */
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 10px 10px;
+  }
+
+  .grid-predictions {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  /* Header – compress title size */
+  .header-title-text {
+    font-size: 1.35rem !important;
+  }
+
+  .header-subtitle {
+    font-size: 0.75rem !important;
+  }
+
+  /* Widgets go single column */
+  .header-widgets {
+    gap: 8px !important;
+  }
+
+  .header-widget-item {
+    flex: 1 1 100%;
+  }
+
+  /* Prediction card inner padding */
+  .glass-panel {
+    border-radius: 12px;
+  }
+
+  /* Modal truly full screen */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    max-height: 96vh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  /* Admin panel */
+  .admin-modal-panel {
+    height: 96vh;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .admin-header {
+    padding: 12px;
+  }
+
+  .admin-tab-btn {
+    font-size: 0.65rem;
+    padding: 6px 2px;
+  }
+
+  /* Deposit & user cards stay single col */
+  .deposit-list-container,
+  .user-list-container {
+    padding: 10px;
+  }
+
+  /* Risk filter – make buttons smaller */
+  .risk-filter-tabs button {
+    font-size: 0.75rem !important;
+    padding: 6px 10px !important;
+    white-space: nowrap;
+  }
+
+  /* Best play of day banner on mobile */
+  .best-play-banner {
+    padding: 16px !important;
+  }
+
+  /* Dial size smaller on mobile */
+  .dial-container {
+    width: 64px !important;
+    height: 64px !important;
+  }
+
+  .dial-number {
+    font-size: 0.95rem !important;
+  }
+
+  /* Scrollbar hide on mobile */
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+}
+
+/* ── VERY SMALL (≤ 360px) ──────────────────── */
+@media (max-width: 360px) {
+  .dashboard-container {
+    padding: 8px 8px;
+  }
+
+  .header-title-text {
+    font-size: 1.1rem !important;
+  }
+
+  .grid-predictions {
+    gap: 10px;
+  }
+}
