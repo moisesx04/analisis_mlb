@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import PredictionCard from '../components/PredictionCard';
 import TeamCompareModal from '../components/TeamCompareModal';
 import AuthScreen from '../components/AuthScreen';
+import ChatWidget from '../components/ChatWidget';
 import { Calendar, Search, SlidersHorizontal, RefreshCw, Sparkles, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
 
 export default function Home() {
@@ -32,6 +33,11 @@ export default function Home() {
   const handleLoginSuccess = (userData) => {
     setUser(userData);
     localStorage.setItem('mlb_active_user', JSON.stringify(userData));
+  };
+
+  const handleUpdateCredits = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem('mlb_active_user', JSON.stringify(updatedUser));
   };
 
   const handleLogout = () => {
@@ -337,6 +343,9 @@ export default function Home() {
           onClose={() => setSelectedGame(null)} 
         />
       )}
+
+      {/* Chat Widget para Depósitos y Soporte */}
+      <ChatWidget user={user} onUpdateCredits={handleUpdateCredits} />
 
 
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Activity, Calendar, ShieldCheck, Zap, LogOut, User, Sun, Moon } from 'lucide-react';
+import { Activity, Calendar, ShieldCheck, Zap, LogOut, User, Sun, Moon, Coins } from 'lucide-react';
 
 export default function Header({ totalGames, lowRiskCount, user, onLogout }) {
   const [timeStr, setTimeStr] = useState('');
@@ -89,6 +89,15 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout }) {
             >
               {isLightTheme ? <Moon style={{ width: '16px', height: '16px' }} /> : <Sun style={{ width: '16px', height: '16px' }} />}
             </button>
+
+            {/* Widget de Créditos / Saldo */}
+            <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', border: 'none', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px' }}>
+              <Coins style={{ color: 'var(--color-medium-risk)', width: '18px', height: '18px' }} />
+              <div>
+                <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Créditos</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>${parseFloat(user.credits || 0).toFixed(2)} USD</span>
+              </div>
+            </div>
 
             <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', border: 'none', background: 'var(--bg-input)', borderRadius: '12px' }}>
               <User style={{ color: 'var(--color-primary)', width: '18px', height: '18px' }} />
