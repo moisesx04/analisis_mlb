@@ -23,8 +23,23 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Analista de Jugadas MLB",
+    "alternateName": "Predicciones de Jugadas MLB y ESPN",
+    "url": "https://analisis-mlb.vercel.app/",
+    "description": "Sistema avanzado de predicciones lógicas y estadísticas de béisbol de la MLB en tiempo real.",
+  };
+
   return (
     <html lang="es" className={`${outfit.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
