@@ -70,7 +70,7 @@ export async function PUT(request) {
       }
 
       const currentCredits = parseFloat(usersResult[0].credits || 0);
-      const addedCredits = parseFloat(deposit.amount);
+      const addedCredits = parseFloat(deposit.amount) * 10;
       const newCredits = (currentCredits + addedCredits).toFixed(2);
 
       // 3. Acreditar saldo en users

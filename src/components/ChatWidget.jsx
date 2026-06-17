@@ -84,11 +84,16 @@ export default function ChatWidget({ user, onUpdateCredits }) {
             chat_id: user.email,
             sender: 'bot',
             sender_name: 'Asistente',
-            text: `Excelente decisión. Para comprar créditos de análisis, realiza el pago en cualquiera de las siguientes opciones:\n\n` +
-              `• 🏦 **Banco Nacional:** Cta: 1234-5678-9012 (A nombre de Juan Pérez • Ahorros)\n` +
-              `• 💳 **Binance Pay ID:** 987654321 (Enviar USDT)\n` +
-              `• 📧 **PayPal:** pagos@analistamlb.com (Enviar como familiar/amigo)\n\n` +
-              `Una vez realizado, pulsa el botón de abajo para registrar tu comprobante.`
+            text: `Excelente decisión. Adquiere uno de nuestros paquetes de créditos para desbloquear sugerencias (cada consulta VIP cuesta 10 créditos):\n\n` +
+              `📊 **Paquetes Oficiales:**\n` +
+              `• 🪙 **20 Créditos** por **$2.00 USD**\n` +
+              `• 🪙 **200 Créditos** por **$20.00 USD**\n` +
+              `• 🪙 **1000 Créditos** por **$100.00 USD**\n\n` +
+              `🏦 **Métodos de Pago Disponibles:**\n` +
+              `• **Banco Nacional:** Cta: 1234-5678-9012 (A nombre de Juan Pérez • Ahorros)\n` +
+              `• **Binance Pay ID:** 987654321 (Enviar USDT)\n` +
+              `• **PayPal:** pagos@analistamlb.com (Enviar como familiar/amigo)\n\n` +
+              `Una vez realizado tu pago, pulsa el botón de abajo para registrar tu comprobante.`
           })
         });
 
@@ -243,7 +248,7 @@ export default function ChatWidget({ user, onUpdateCredits }) {
           sender_name: user.username,
           text: `💸 *COMPROBANTE REGISTRADO*\n` +
             `• Método: ${method}\n` +
-            `• Monto: $${amount} USD\n` +
+            `• Monto: $${amount} USD (Equivale a ${Math.floor(parseFloat(amount) * 10)} 🪙)\n` +
             `• Ref: ${reference}\n` +
             `• Comentarios: ${notes || 'Sin comentarios.'}`
         })
@@ -263,10 +268,10 @@ export default function ChatWidget({ user, onUpdateCredits }) {
   const getWhatsAppLink = () => {
     const adminPhoneNumber = '18491234567'; // Reemplazar con el número real del administrador
     const text = encodeURIComponent(
-      `Hola Administrador, acabo de registrar un depósito en la plataforma Analista MLB.\n\n` +
+      `Hola Administrador, acabo de registrar un depósito en la plataforma Asesoría MLB.\n\n` +
       `• *Usuario:* ${user?.username}\n` +
       `• *Correo:* ${user?.email}\n` +
-      `• *Monto:* $${amount} USD\n` +
+      `• *Monto:* $${amount} USD (${Math.floor(parseFloat(amount) * 10)} créditos 🪙)\n` +
       `• *Método:* ${method}\n` +
       `• *Referencia:* ${reference}\n` +
       `• *Mensaje:* ${notes || 'Sin comentarios.'}\n\n` +
@@ -508,6 +513,11 @@ export default function ChatWidget({ user, onUpdateCredits }) {
                       }}
                       required
                     />
+                    {amount && !isNaN(amount) && (
+                      <span style={{ fontSize: '0.65rem', color: 'var(--color-low-risk)', fontWeight: 700, marginTop: '2px' }}>
+                        Equivale a: {Math.floor(parseFloat(amount) * 10)} 🪙
+                      </span>
+                    )}
                   </div>
                   <div style={{ flex: 1.5, display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600 }}>REFERENCIA / ID *</label>

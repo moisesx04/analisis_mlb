@@ -192,7 +192,7 @@ export default function AuthScreen({ onSuccess }) {
             margin: '0 0 8px 0',
             lineHeight: '1.2'
           }}>
-            ANALISTA DE JUGADAS MLB
+            CONSEJERO VIP MLB
           </h1>
           
           <p style={{
@@ -200,7 +200,7 @@ export default function AuthScreen({ onSuccess }) {
             color: 'var(--text-secondary)',
             margin: 0
           }}>
-            Análisis lógico y predicciones estadísticas en tiempo real
+            Mesa de Expertos en Las Vegas • Proyecciones y Tendencias Premium
           </p>
         </div>
 

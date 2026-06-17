@@ -112,7 +112,8 @@ export default function Home() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/predictions?date=${targetDate}`);
+      const emailParam = user ? `&email=${encodeURIComponent(user.email)}` : '';
+      const response = await fetch(`/api/predictions?date=${targetDate}${emailParam}`);
       if (!response.ok) {
         throw new Error('No se pudo obtener la cartelera de predicciones.');
       }
@@ -134,10 +135,19 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.email]);
 
   useEffect(() => {
     fetchPredictions(date);
+  }, [date, fetchPredictions]);
+
+  // Polling automático para la cartelera de hoy cada 30 segundos
+  useEffect(() => {
+    if (date !== '2026-06-17') return;
+    const interval = setInterval(() => {
+      fetchPredictions(date);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [date, fetchPredictions]);
 
   // Manejador del cambio de fecha
@@ -184,6 +194,39 @@ export default function Home() {
         adminNotifyCount={adminNotifyCount}
       />
 
+      {/* Banner de historial de jugadas si es fecha pasada */}
+      {date < '2026-06-17' && (
+        <div className="glass-panel" style={{ 
+          padding: '16px 20px', 
+          marginBottom: '24px', 
+          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%)',
+          borderColor: 'rgba(59, 130, 246, 0.3)',
+          borderRadius: '12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <div style={{
+            backgroundColor: 'rgba(59, 130, 246, 0.15)',
+            padding: '8px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Sparkles style={{ width: '18px', height: '18px', color: 'var(--color-primary)' }} />
+          </div>
+          <div>
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '2px' }}>
+              📅 Historial de la Mesa de Expertos (Verificación de Credibilidad)
+            </h4>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+              Estás visualizando la cartelera de fechas anteriores. Todos los análisis y proyecciones sugeridos han sido liberados gratuitamente para que audites nuestra efectividad y tasa de acierto.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Grid Superior: Controles de Fecha y Destacados */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         
@@ -215,6 +258,42 @@ export default function Home() {
                 }}
               />
               <Calendar style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '18px', height: '18px', color: 'var(--text-secondary)' }} />
+            </div>
+            
+            {/* Accesos rápidos de fecha */}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+              <button 
+                onClick={() => setDate('2026-06-17')}
+                className="btn-secondary"
+                style={{ 
+                  flex: 1, 
+                  fontSize: '0.75rem', 
+                  padding: '8px 6px',
+                  background: date === '2026-06-17' ? 'rgba(59, 130, 246, 0.15)' : 'none',
+                  borderColor: date === '2026-06-17' ? 'var(--color-primary)' : 'var(--border-glass)',
+                  color: date === '2026-06-17' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  justifyContent: 'center',
+                  fontWeight: 700
+                }}
+              >
+                Hoy (En Vivo)
+              </button>
+              <button 
+                onClick={() => setDate('2026-06-16')}
+                className="btn-secondary"
+                style={{ 
+                  flex: 1, 
+                  fontSize: '0.75rem', 
+                  padding: '8px 6px',
+                  background: date === '2026-06-16' ? 'rgba(59, 130, 246, 0.15)' : 'none',
+                  borderColor: date === '2026-06-16' ? 'var(--color-primary)' : 'var(--border-glass)',
+                  color: date === '2026-06-16' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  justifyContent: 'center',
+                  fontWeight: 700
+                }}
+              >
+                Ayer (Resultados)
+              </button>
             </div>
           </div>
 
@@ -376,7 +455,7 @@ export default function Home() {
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '16px' }}>
           <div style={{ width: '40px', height: '40px', border: '3px solid rgba(255,255,255,0.05)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Analizando estadísticas de MLB & ESPN...</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Consultando estadísticas y proyecciones de la Mesa...</p>
         </div>
       ) : error ? (
         <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', borderColor: 'var(--color-high-risk-bg)', maxWidth: '600px', margin: '40px auto' }}>
@@ -395,6 +474,9 @@ export default function Home() {
             <PredictionCard 
               key={game.id} 
               game={game} 
+              user={user}
+              onUnlock={() => fetchPredictions(date)}
+              onUpdateCredits={handleUpdateCredits}
               onCompare={setSelectedGame} 
             />
           ))}

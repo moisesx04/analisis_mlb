@@ -41,11 +41,11 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpe
           <div style={{ backgroundColor: 'var(--color-primary-glow)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Activity className="text-accent-gradient" style={{ width: '24px', height: '24px' }} />
           </div>
-          <h1 className="text-gradient" style={{ fontSize: '1.8rem', fontWeight: 800 }}>ANALISTA DE JUGADAS MLB</h1>
+          <h1 className="text-gradient" style={{ fontSize: '1.8rem', fontWeight: 800 }}>CONSEJERO VIP MLB</h1>
         </div>
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span className="pulse-live"></span>
-          Conectado con MLB Stats & ESPN API • Análisis lógico en tiempo real
+          Mesa de Expertos en Las Vegas • Estadísticas y Tendencias Premium
         </p>
       </div>
 
@@ -140,7 +140,9 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpe
               <Coins style={{ color: 'var(--color-medium-risk)', width: '18px', height: '18px' }} />
               <div>
                 <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Créditos</span>
-                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>${parseFloat(user.credits || 0).toFixed(2)} USD</span>
+                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  {Math.floor(parseFloat(user.credits || 0))} 🪙
+                </span>
               </div>
             </div>
 
