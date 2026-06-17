@@ -6,6 +6,8 @@ import PredictionCard from '../components/PredictionCard';
 import TeamCompareModal from '../components/TeamCompareModal';
 import AuthScreen from '../components/AuthScreen';
 import ChatWidget from '../components/ChatWidget';
+import AdminPanel from '../components/AdminPanel';
+import { supabase } from '../lib/supabase';
 import { Calendar, Search, SlidersHorizontal, RefreshCw, Sparkles, CheckCircle2, TrendingUp, HelpCircle } from 'lucide-react';
 
 export default function Home() {
@@ -21,6 +23,7 @@ export default function Home() {
   // Estados de Autenticación
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
 
   useEffect(() => {
     const activeUser = localStorage.getItem('mlb_active_user');
@@ -29,6 +32,29 @@ export default function Home() {
     }
     setAuthChecked(true);
   }, []);
+
+  // Escuchar actualizaciones de créditos/usuario en tiempo real desde Supabase
+  useEffect(() => {
+    if (!user || !user.email) return;
+
+    const channel = supabase
+      .channel(`user-updates-${user.email}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'users', filter: `email=eq.${user.email}` },
+        (payload) => {
+          if (payload.new) {
+            setUser(payload.new);
+            localStorage.setItem('mlb_active_user', JSON.stringify(payload.new));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.email]);
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
@@ -42,6 +68,7 @@ export default function Home() {
 
   const handleLogout = () => {
     setUser(null);
+    setShowAdminPanel(false);
     localStorage.removeItem('mlb_active_user');
   };
 
@@ -117,6 +144,7 @@ export default function Home() {
         lowRiskCount={lowRiskGamesCount} 
         user={user}
         onLogout={handleLogout}
+        onOpenAdmin={() => setShowAdminPanel(true)}
       />
 
       {/* Grid Superior: Controles de Fecha y Destacados */}
@@ -347,7 +375,10 @@ export default function Home() {
       {/* Chat Widget para Depósitos y Soporte */}
       <ChatWidget user={user} onUpdateCredits={handleUpdateCredits} />
 
-
+      {/* Panel de administración en modal overlay */}
+      {showAdminPanel && (
+        <AdminPanel adminUser={user} onClose={() => setShowAdminPanel(false)} />
+      )}
 
       {/* Estilos locales para animaciones del loader */}
       <style jsx global>{`

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Calendar, ShieldCheck, Zap, LogOut, User, Sun, Moon, Coins } from 'lucide-react';
 
-export default function Header({ totalGames, lowRiskCount, user, onLogout }) {
+export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpenAdmin }) {
   const [timeStr, setTimeStr] = useState('');
   const [isLightTheme, setIsLightTheme] = useState(false);
 
@@ -89,6 +89,29 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout }) {
             >
               {isLightTheme ? <Moon style={{ width: '16px', height: '16px' }} /> : <Sun style={{ width: '16px', height: '16px' }} />}
             </button>
+
+            {/* Panel de administración visible solo para admin */}
+            {user.role === 'admin' && (
+              <button 
+                className="btn-primary" 
+                onClick={onOpenAdmin}
+                style={{ 
+                  padding: '10px 16px', 
+                  borderRadius: '12px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  fontSize: '0.85rem', 
+                  fontWeight: 700,
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
+                  background: 'linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(220, 90%, 50%) 100%)'
+                }}
+                title="Panel de Administración"
+              >
+                <ShieldCheck style={{ width: '16px', height: '16px' }} />
+                Administración
+              </button>
+            )}
 
             {/* Widget de Créditos / Saldo */}
             <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', border: 'none', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px' }}>

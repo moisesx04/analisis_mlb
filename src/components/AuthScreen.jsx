@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, Activity, Eye, EyeOff, LogIn, Sun, Moon } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function AuthScreen({ onSuccess }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -50,37 +51,78 @@ export default function AuthScreen({ onSuccess }) {
 
     setLoading(true);
 
-    if (isLogin) {
-      setTimeout(() => {
+    try {
+      if (isLogin) {
+        // Consultar el usuario en Supabase
+        const { data: user, error: loginError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('email', email)
+          .eq('password', password)
+          .maybeSingle();
+
         setLoading(false);
-        const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
-        const user = storedUsers.find(u => u.email === email && u.password === password);
+
+        if (loginError) {
+          console.error(loginError);
+          setError('Error de conexión con la base de datos.');
+          return;
+        }
+
         if (user) {
           onSuccess(user);
         } else {
           setError('Correo o contraseña incorrectos.');
         }
-      }, 1000);
-    } else {
-      setTimeout(() => {
-        setLoading(false);
-        const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
-        const userExists = storedUsers.some(u => u.email === email);
-        if (userExists) {
+      } else {
+        // Registrar en Supabase
+        // 1. Verificar si el correo ya existe
+        const { data: existingUser, error: findError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+
+        if (findError) {
+          console.error(findError);
+          setLoading(false);
+          setError('Error al verificar la disponibilidad del correo.');
+          return;
+        }
+
+        if (existingUser) {
+          setLoading(false);
           setError('Este correo electrónico ya está registrado.');
           return;
         }
-        
-        const newUser = {
-          id: Date.now(),
-          username,
-          email,
-          password
-        };
-        storedUsers.push(newUser);
-        localStorage.setItem('mlb_users', JSON.stringify(storedUsers));
-        onSuccess(newUser);
-      }, 1000);
+
+        // 2. Insertar nuevo usuario
+        // Nota: para pruebas, puedes establecer que "admin@analistamlb.com" tenga el rol admin por defecto
+        const isAdminEmail = email.toLowerCase() === 'admin@analistamlb.com';
+        const { data: newUser, error: insertError } = await supabase
+          .from('users')
+          .insert([
+            { username, email, password, credits: 0.00, role: isAdminEmail ? 'admin' : 'user' }
+          ])
+          .select()
+          .single();
+
+        setLoading(false);
+
+        if (insertError) {
+          console.error(insertError);
+          setError('Error al crear la cuenta en la base de datos.');
+          return;
+        }
+
+        if (newUser) {
+          onSuccess(newUser);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+      setError('Error al conectar con el servidor.');
     }
   };
 

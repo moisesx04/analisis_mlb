@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, CreditCard, ArrowLeft, Upload, ShieldCheck, Coins, HelpCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function ChatWidget({ user, onUpdateCredits }) {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState('welcome'); // welcome, deposit_info, deposit_form, loading, success
   const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState('');
   
   // Deposit Form State
   const [amount, setAmount] = useState('');
@@ -18,54 +20,91 @@ export default function ChatWidget({ user, onUpdateCredits }) {
 
   const chatEndRef = useRef(null);
 
+  // 1. Cargar mensajes iniciales y suscribirse a cambios en tiempo real
+  useEffect(() => {
+    if (!user || !isOpen) return;
+
+    fetchMessages();
+
+    // Suscribirse al canal en tiempo real para este chat_id
+    const channel = supabase
+      .channel(`chat-${user.email}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `chat_id=eq.${user.email}` },
+        (payload) => {
+          setMessages(prev => {
+            // Evitar agregar duplicados
+            if (prev.some(m => m.id === payload.new.id)) return prev;
+            return [...prev, payload.new];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, isOpen]);
+
   useEffect(() => {
     if (chatEndRef.current) {
       chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, step]);
 
-  // Initial welcome message from bot
-  useEffect(() => {
-    if (user) {
-      setMessages([
-        {
-          sender: 'bot',
-          text: `¡Hola, **${user.username}**! 👋 Soy el asistente virtual de Analista MLB. ¿En qué puedo ayudarte hoy?`
-        }
-      ]);
-    }
-  }, [user]);
+  const fetchMessages = async () => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('chat_id', user.email)
+      .order('created_at', { ascending: true });
 
-  const handleOptionClick = (option) => {
+    if (data) {
+      setMessages(data);
+      // Si ya hay historial de mensajes de depósito o chat, cambiamos el step a chat libre
+      if (data.length > 0) {
+        setStep('welcome');
+      }
+    }
+  };
+
+  const handleOptionClick = async (option) => {
+    if (!user) return;
+
     if (option === 'deposit') {
       setStep('deposit_info');
-      setMessages(prev => [
-        ...prev,
-        { sender: 'user', text: '💰 Recargar Créditos / Depositar' },
+      // Registrar selección en la base de datos
+      await supabase.from('messages').insert([
+        { chat_id: user.email, sender: 'user', sender_name: user.username, text: '💰 Recargar Créditos / Depositar' },
         {
+          chat_id: user.email,
           sender: 'bot',
+          sender_name: 'Asistente',
           text: `Excelente decisión. Para comprar créditos de análisis, realiza el pago en cualquiera de las siguientes opciones:\n\n` +
             `• 🏦 **Banco Nacional:** Cta: 1234-5678-9012 (A nombre de Juan Pérez • Ahorros)\n` +
             `• 💳 **Binance Pay ID:** 987654321 (Enviar USDT)\n` +
             `• 📧 **PayPal:** pagos@analistamlb.com (Enviar como familiar/amigo)\n\n` +
-            `Una vez realizado, pulsa el botón de abajo para enviarme el comprobante.`
+            `Una vez realizado, pulsa el botón de abajo para registrar tu comprobante.`
         }
       ]);
     } else if (option === 'how_it_works') {
-      setMessages(prev => [
-        ...prev,
-        { sender: 'user', text: '❓ ¿Cómo funcionan las predicciones?' },
+      await supabase.from('messages').insert([
+        { chat_id: user.email, sender: 'user', sender_name: user.username, text: '❓ ¿Cómo funcionan las predicciones?' },
         {
+          chat_id: user.email,
           sender: 'bot',
+          sender_name: 'Asistente',
           text: 'Nuestro sistema recopila estadísticas en tiempo real de MLB Stats y ESPN API. Evaluamos el estadio, clima, lanzadores abridores y rotaciones de bateo para calcular el porcentaje lógico de probabilidad de victoria y riesgo (Bajo, Medio, Alto). \n\n¡Los partidos de Bajo Riesgo tienen más de un 80% de efectividad histórica!'
         }
       ]);
     } else if (option === 'support') {
-      setMessages(prev => [
-        ...prev,
-        { sender: 'user', text: '👤 Soporte Técnico' },
+      await supabase.from('messages').insert([
+        { chat_id: user.email, sender: 'user', sender_name: user.username, text: '👤 Soporte Técnico' },
         {
+          chat_id: user.email,
           sender: 'bot',
+          sender_name: 'Asistente',
           text: 'Si tienes problemas con la plataforma o alguna duda con tu cuenta, puedes escribir directamente a nuestro administrador de soporte técnico en WhatsApp o enviar un correo electrónico a soporte@analistamlb.com. ¡Estamos activos 24/7!'
         }
       ]);
@@ -75,6 +114,33 @@ export default function ChatWidget({ user, onUpdateCredits }) {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFileName(e.target.files[0].name);
+    }
+  };
+
+  // Enviar mensaje personalizado de chat libre
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!inputText.trim() || !user) return;
+
+    const textToSend = inputText;
+    setInputText('');
+
+    try {
+      const { error } = await supabase.from('messages').insert([
+        {
+          chat_id: user.email,
+          sender: 'user',
+          sender_name: user.username,
+          text: textToSend
+        }
+      ]);
+
+      if (error) {
+        console.error(error);
+        alert('Error al enviar el mensaje.');
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -90,8 +156,8 @@ export default function ChatWidget({ user, onUpdateCredits }) {
     setStep('loading');
 
     try {
-      // 1. Enviar comprobante real al endpoint backend
-      const response = await fetch('/api/support/notify', {
+      // 1. Enviar comprobante real al endpoint backend para alertas Discord/Telegram
+      await fetch('/api/support/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -104,61 +170,38 @@ export default function ChatWidget({ user, onUpdateCredits }) {
         })
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'No se pudo enviar la notificación.');
-      }
-
-      // 2. Registrar la recarga de manera local en localStorage
-      const localDeposits = JSON.parse(localStorage.getItem('mlb_deposits') || '[]');
-      const newDeposit = {
-        id: Date.now(),
-        username: user.username,
-        amount,
-        reference,
-        method,
-        notes,
-        status: 'pending',
-        date: new Date().toLocaleString()
-      };
-      localDeposits.push(newDeposit);
-      localStorage.setItem('mlb_deposits', JSON.stringify(localDeposits));
-
-      setStep('success');
-      setMessages(prev => [
-        ...prev,
-        { sender: 'bot', text: `¡Perfecto! He recibido tu comprobante de depósito por **$${amount} USD** (Referencia: ${reference}) a través de ${method}.` }
-      ]);
-
-      // --- MEJORA: APROBACIÓN SIMULADA ---
-      // Para hacer que la experiencia local sea fantástica, simulamos la aprobación del depósito tras 8 segundos
-      setTimeout(() => {
-        // Cargar los usuarios
-        const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
-        const updatedUsers = storedUsers.map(u => {
-          if (u.email === user.email) {
-            const currentCredits = parseFloat(u.credits || 0);
-            const addedCredits = parseFloat(amount);
-            const updatedUser = { ...u, credits: (currentCredits + addedCredits).toFixed(2) };
-            
-            // Actualizar estado del usuario en tiempo real en la página principal
-            onUpdateCredits(updatedUser);
-            return updatedUser;
-          }
-          return u;
-        });
-        localStorage.setItem('mlb_users', JSON.stringify(updatedUsers));
-
-        // Agregar mensaje de confirmación del bot de que se ha acreditado
-        setMessages(prev => [
-          ...prev,
+      // 2. Registrar el depósito en la tabla de Supabase
+      const { error: insertError } = await supabase
+        .from('deposits')
+        .insert([
           {
-            sender: 'bot',
-            text: `🎉 *¡Depósito Aprobado!* El administrador ha verificado tu referencia y acreditado **$${amount} USD** a tu cuenta. ¡Tu saldo ha sido actualizado!`
+            username: user.username,
+            email: user.email,
+            amount: parseFloat(amount),
+            reference,
+            method,
+            notes,
+            status: 'pending'
           }
         ]);
-      }, 8000);
+
+      if (insertError) throw insertError;
+
+      // 3. Registrar mensaje automático en el chat para avisar del depósito en el historial
+      await supabase.from('messages').insert([
+        {
+          chat_id: user.email,
+          sender: 'user',
+          sender_name: user.username,
+          text: `💸 *COMPROBANTE REGISTRADO*\n` +
+            `• Método: ${method}\n` +
+            `• Monto: $${amount} USD\n` +
+            `• Ref: ${reference}\n` +
+            `• Comentarios: ${notes || 'Sin comentarios.'}`
+        }
+      ]);
+
+      setStep('success');
 
     } catch (err) {
       console.error(err);
@@ -225,7 +268,7 @@ export default function ChatWidget({ user, onUpdateCredits }) {
           flexDirection: 'column',
           overflow: 'hidden',
           borderRadius: '20px',
-          background: 'rgba(3, 7, 18, 0.8)',
+          background: 'rgba(3, 7, 18, 0.85)',
           borderColor: 'rgba(255, 255, 255, 0.1)',
           backdropFilter: 'blur(20px)',
           boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
@@ -271,28 +314,49 @@ export default function ChatWidget({ user, onUpdateCredits }) {
             flexDirection: 'column',
             gap: '14px'
           }}>
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                style={{
-                  alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
-                  maxWidth: '85%',
-                  background: msg.sender === 'user'
-                    ? 'linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(220, 90%, 50%) 100%)'
-                    : 'rgba(255, 255, 255, 0.04)',
-                  color: msg.sender === 'user' ? '#ffffff' : 'var(--text-primary)',
-                  padding: '12px 16px',
-                  borderRadius: msg.sender === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
-                  fontSize: '0.85rem',
-                  lineHeight: '1.4',
-                  border: msg.sender === 'user' ? 'none' : '1px solid rgba(255, 255, 255, 0.05)',
-                  boxShadow: msg.sender === 'user' ? '0 4px 10px rgba(59, 130, 246, 0.2)' : 'none',
-                  whiteSpace: 'pre-line'
-                }}
-              >
-                {msg.text}
+            {messages.length === 0 ? (
+              <div style={{
+                alignSelf: 'flex-start',
+                maxWidth: '85%',
+                background: 'rgba(255, 255, 255, 0.04)',
+                color: 'var(--text-primary)',
+                padding: '12px 16px',
+                borderRadius: '16px 16px 16px 2px',
+                fontSize: '0.85rem',
+                lineHeight: '1.4',
+                border: '1px solid rgba(255, 255, 255, 0.05)'
+              }}>
+                ¡Hola, **{user?.username}**! 👋 Soy el asistente virtual de Analista MLB. ¿En qué puedo ayudarte hoy?
               </div>
-            ))}
+            ) : (
+              messages.map((msg, idx) => (
+                <div
+                  key={msg.id || idx}
+                  style={{
+                    alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    background: msg.sender === 'user'
+                      ? 'linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(220, 90%, 50%) 100%)'
+                      : (msg.sender === 'admin'
+                        ? 'linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(255,255,255,0.03) 100%)'
+                        : 'rgba(255, 255, 255, 0.04)'),
+                    color: msg.sender === 'user' ? '#ffffff' : 'var(--text-primary)',
+                    padding: '12px 16px',
+                    borderRadius: msg.sender === 'user' ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                    fontSize: '0.85rem',
+                    lineHeight: '1.4',
+                    border: '1px solid rgba(255, 255, 255, 0.05)',
+                    boxShadow: msg.sender === 'user' ? '0 4px 10px rgba(59, 130, 246, 0.2)' : 'none',
+                    whiteSpace: 'pre-line'
+                  }}
+                >
+                  <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '4px', fontWeight: 700 }}>
+                    {msg.sender === 'user' ? 'Tú' : msg.sender_name}
+                  </span>
+                  {msg.text}
+                </div>
+              ))
+            )}
 
             {/* Opciones rápidas de bienvenida */}
             {step === 'welcome' && (
@@ -522,10 +586,7 @@ export default function ChatWidget({ user, onUpdateCredits }) {
                     ¡Comprobante Enviado!
                   </h4>
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                    Los datos han sido enviados al servidor. El administrador verificará tu referencia en unos minutos.
-                  </p>
-                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '8px', fontStyle: 'italic' }}>
-                    💡 Modo de prueba: Tus créditos se recargarán automáticamente en unos segundos.
+                    Los datos han sido enviados al servidor. El administrador verificará tu referencia en unos minutos para acreditar tu saldo.
                   </p>
                 </div>
 
@@ -541,7 +602,7 @@ export default function ChatWidget({ user, onUpdateCredits }) {
                     padding: '12px',
                     borderRadius: '12px',
                     justifyContent: 'center',
-                    background: '#22c55e', // Color verde oficial de WhatsApp
+                    background: '#22c55e',
                     boxShadow: '0 4px 14px rgba(34, 197, 94, 0.3)',
                     textDecoration: 'none',
                     color: '#ffffff'
@@ -563,13 +624,48 @@ export default function ChatWidget({ user, onUpdateCredits }) {
                   className="btn-secondary"
                   style={{ width: '100%', fontSize: '0.8rem', padding: '8px', borderRadius: '10px', justifyContent: 'center' }}
                 >
-                  Volver al Inicio
+                  Volver al Chat
                 </button>
               </div>
             )}
 
             <div ref={chatEndRef} />
           </div>
+
+          {/* Caja de texto para chat libre (si no está cargando o en formulario) */}
+          {step !== 'deposit_form' && step !== 'loading' && (
+            <form onSubmit={handleSendMessage} style={{
+              display: 'flex',
+              gap: '8px',
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              padding: '12px 16px',
+              background: 'rgba(3, 7, 18, 0.5)'
+            }}>
+              <input
+                type="text"
+                placeholder="Escribe un mensaje al soporte..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-glass)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.85rem',
+                  outline: 'none'
+                }}
+              />
+              <button
+                type="submit"
+                className="btn-primary"
+                style={{ padding: '10px', borderRadius: '10px', justifyContent: 'center', boxShadow: 'none' }}
+              >
+                <Send style={{ width: '16px', height: '16px' }} />
+              </button>
+            </form>
+          )}
 
         </div>
       )}
