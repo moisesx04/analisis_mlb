@@ -17,6 +17,9 @@ export default function AuthModal({ onClose, onSuccess }) {
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [generatedCode, setGeneratedCode] = useState('');
   const [codeToast, setCodeToast] = useState('');
+  const [verificationToken, setVerificationToken] = useState('');
+  const [isDevMode, setIsDevMode] = useState(false);
+  const [emailSentToast, setEmailSentToast] = useState(false);
   
   // Error / Loading states
   const [error, setError] = useState('');
@@ -31,19 +34,52 @@ export default function AuthModal({ onClose, onSuccess }) {
     useRef(null)
   ];
 
-  // Genera un código de verificación aleatorio de 6 dígitos
-  const generateVerificationCode = () => {
-    const num = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedCode(num);
-    setCodeToast(num);
-    
-    // Auto ocultar el toast del código después de 15 segundos
-    setTimeout(() => {
-      setCodeToast(prev => prev === num ? '' : prev);
-    }, 15000);
+  const sendVerificationCode = async () => {
+    setError('');
+    setLoading(true);
+    setEmailSentToast(false);
+    try {
+      const response = await fetch('/api/auth/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password }),
+      });
+      const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.devCode) {
+          // Fallback de modo desarrollo si falta la API Key
+          setGeneratedCode(data.devCode);
+          setCodeToast(data.devCode);
+          setIsDevMode(true);
+          setStep('verification');
+          setError('Modo de prueba activado (falta configurar RESEND_API_KEY).');
+          
+          setTimeout(() => {
+            setCodeToast(prev => prev === data.devCode ? '' : prev);
+          }, 15000);
+        } else {
+          setError(data.error || 'Ocurrió un error al enviar el código de verificación.');
+        }
+      } else {
+        setVerificationToken(data.token);
+        setIsDevMode(false);
+        setStep('verification');
+        setEmailSentToast(true);
+        
+        setTimeout(() => {
+          setEmailSentToast(false);
+        }, 6000);
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Error de conexión con el servidor al enviar el correo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -57,47 +93,38 @@ export default function AuthModal({ onClose, onSuccess }) {
       return;
     }
 
-    setLoading(true);
-
-    // Simular retraso de red
-    setTimeout(() => {
-      setLoading(false);
-      
-      const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
-      
-      if (isLogin) {
-        // Lógica de Inicio de Sesión
+    if (isLogin) {
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+        const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
         const user = storedUsers.find(u => u.email === email && u.password === password);
         if (user) {
           onSuccess(user);
         } else {
           setError('Correo o contraseña incorrectos.');
         }
-      } else {
-        // Lógica de Registro (validar duplicado)
-        const userExists = storedUsers.some(u => u.email === email);
-        if (userExists) {
-          setError('Este correo electrónico ya está registrado.');
-        } else {
-          // Generar código y avanzar al paso de verificación
-          generateVerificationCode();
-          setStep('verification');
-        }
+      }, 1000);
+    } else {
+      const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
+      const userExists = storedUsers.some(u => u.email === email);
+      if (userExists) {
+        setError('Este correo electrónico ya está registrado.');
+        return;
       }
-    }, 1000);
+      
+      await sendVerificationCode();
+    }
   };
 
   // Manejar entrada en los cuadros del código
   const handleCodeChange = (index, value) => {
-    // Aceptar solo números
     if (!/^\d*$/.test(value)) return;
     
     const newCode = [...code];
-    // Tomar solo el último caracter si pega texto
     newCode[index] = value.slice(-1);
     setCode(newCode);
 
-    // Mover al siguiente input si se llenó
     if (value && index < 5) {
       inputRefs[index + 1].current.focus();
     }
@@ -110,7 +137,7 @@ export default function AuthModal({ onClose, onSuccess }) {
     }
   };
 
-  const handleVerifyCode = (e) => {
+  const handleVerifyCode = async (e) => {
     e.preventDefault();
     setError('');
     const fullCode = code.join('');
@@ -122,37 +149,63 @@ export default function AuthModal({ onClose, onSuccess }) {
 
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
-      if (fullCode === generatedCode) {
-        // Código correcto: guardar usuario en base de datos local (localStorage)
-        const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
-        const newUser = {
-          id: Date.now(),
-          username,
-          email,
-          password // Guardado local de prueba
-        };
+    if (isDevMode) {
+      setTimeout(() => {
+        setLoading(false);
+        if (fullCode === generatedCode) {
+          const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
+          const newUser = {
+            id: Date.now(),
+            username,
+            email,
+            password
+          };
+          storedUsers.push(newUser);
+          localStorage.setItem('mlb_users', JSON.stringify(storedUsers));
+          onSuccess(newUser);
+        } else {
+          setError('Código de verificación incorrecto.');
+        }
+      }, 1200);
+    } else {
+      try {
+        const response = await fetch('/api/auth/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: fullCode, token: verificationToken })
+        });
+        const data = await response.json();
         
-        storedUsers.push(newUser);
-        localStorage.setItem('mlb_users', JSON.stringify(storedUsers));
-        
-        // Sesión exitosa
-        onSuccess(newUser);
-      } else {
-        setError('Código de verificación incorrecto. Intenta de nuevo.');
+        setLoading(false);
+        if (!response.ok) {
+          setError(data.error || 'Código de verificación incorrecto.');
+        } else {
+          const storedUsers = JSON.parse(localStorage.getItem('mlb_users') || '[]');
+          const newUser = {
+            id: Date.now(),
+            username: data.user.username,
+            email: data.user.email,
+            password: data.user.password
+          };
+          storedUsers.push(newUser);
+          localStorage.setItem('mlb_users', JSON.stringify(storedUsers));
+          onSuccess(newUser);
+        }
+      } catch (err) {
+        console.error(err);
+        setError('Error al conectar con el servidor.');
+        setLoading(false);
       }
-    }, 1200);
+    }
   };
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
     setCode(['', '', '', '', '', '']);
     setError('');
-    generateVerificationCode();
-    inputRefs[0].current.focus();
+    await sendVerificationCode();
+    inputRefs[0].current?.focus();
   };
 
-  // Auto-enfocar el primer cuadro de verificación cuando cambia de paso
   useEffect(() => {
     if (step === 'verification') {
       inputRefs[0].current?.focus();
@@ -161,7 +214,34 @@ export default function AuthModal({ onClose, onSuccess }) {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1100 }}>
-      {/* Toast del Código de Verificación Simulado */}
+      {/* Toast de Confirmación de Correo Enviado Real */}
+      {emailSentToast && (
+        <div className="glass-panel pulse-toast" style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          padding: '16px 20px',
+          background: 'linear-gradient(135deg, hsl(142, 76%, 5%) 0%, hsl(222, 47%, 5%) 100%)',
+          border: '1px solid var(--color-low-risk)',
+          borderRadius: '12px',
+          boxShadow: '0 10px 40px rgba(34, 197, 94, 0.3)',
+          zIndex: 1200,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '4px',
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--color-low-risk)', fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <ShieldCheck style={{ width: '14px', height: '14px' }} />
+            Correo de Verificación Enviado
+          </span>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Revisa tu bandeja de entrada en <strong style={{ color: 'var(--text-primary)' }}>{email}</strong></p>
+        </div>
+      )}
+
+      {/* Toast del Código de Verificación Simulado (Sólo en DevMode) */}
       {codeToast && (
         <div className="glass-panel pulse-toast" style={{
           position: 'fixed',
@@ -182,7 +262,7 @@ export default function AuthModal({ onClose, onSuccess }) {
         }}>
           <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <Sparkles style={{ width: '12px', height: '12px', fill: 'var(--color-primary)' }} />
-            Simulación: Código Enviado
+            Modo de Prueba: Código Enviado
           </span>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Ingresa el siguiente código de verificación:</p>
           <strong style={{ fontSize: '1.6rem', color: 'var(--text-primary)', letterSpacing: '0.15em', fontFamily: 'monospace', margin: '4px 0' }}>
