@@ -334,10 +334,14 @@ export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, 
   });
 
   return (
-    <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden' }}>
+    <div className="glass-panel" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', position: 'relative', overflow: 'hidden' }}>
 
       {/* Barra de riesgo superior */}
-      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: topBarColor, borderRadius: '14px 14px 0 0' }} />
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px',
+        background: prediction.riskLevel === 'Bajo'  ? 'var(--green)'  :
+                    prediction.riskLevel === 'Medio' ? 'var(--amber)'  : 'var(--red)',
+        borderRadius: '16px 16px 0 0'
+      }} />
 
       {/* Cabecera: estado + badge de riesgo */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
@@ -367,67 +371,61 @@ export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, 
       {/* Equipos y marcador */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {/* Visitante */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32%', gap: '6px', textAlign: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32%', gap: '5px', textAlign: 'center' }}>
           <img src={awayTeam.logo} alt={awayTeam.name}
-            style={{ width: '46px', height: '46px', objectFit: 'contain' }}
+            style={{ width: '42px', height: '42px', objectFit: 'contain' }}
             onError={e => { e.target.src = 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'; }}
           />
           <div>
-            <span style={{ fontWeight: 800, fontSize: '1rem', display: 'block' }}>{awayTeam.abbrev}</span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{awayTeam.record}</span>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem', display: 'block', color: 'var(--black)' }}>{awayTeam.abbrev}</span>
+            <span style={{ fontSize: '0.68rem', color: 'var(--gray-400)' }}>{awayTeam.record}</span>
           </div>
-          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Visitante</span>
+          <span style={{ fontSize: '0.62rem', color: 'var(--gray-400)', fontWeight: 600 }}>Visitante</span>
         </div>
 
         {/* Centro */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '28%' }}>
           {(isLive || isFinished) ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '2rem', fontWeight: 800 }}>{status.scoreAway ?? 0}</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>-</span>
-              <span style={{ fontSize: '2rem', fontWeight: 800 }}>{status.scoreHome ?? 0}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--black)' }}>{status.scoreAway ?? 0}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--gray-400)', fontWeight: 700 }}>-</span>
+              <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--black)' }}>{status.scoreHome ?? 0}</span>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.06em' }}>VS</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--gray-400)', fontWeight: 700, letterSpacing: '0.06em' }}>VS</span>
               {stadium?.name && (
-                <>
-                  <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '4px' }}>ESTADIO</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px' }}>
-                    {stadium.name.split(' ')[0]}
-                  </span>
-                </>
+                <span style={{ fontSize: '0.62rem', color: 'var(--blue)', fontWeight: 700, textAlign: 'center', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {stadium.name.split(' ')[0]}
+                </span>
               )}
             </div>
           )}
         </div>
 
         {/* Local */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32%', gap: '6px', textAlign: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32%', gap: '5px', textAlign: 'center' }}>
           <img src={homeTeam.logo} alt={homeTeam.name}
-            style={{ width: '46px', height: '46px', objectFit: 'contain' }}
+            style={{ width: '42px', height: '42px', objectFit: 'contain' }}
             onError={e => { e.target.src = 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'; }}
           />
           <div>
-            <span style={{ fontWeight: 800, fontSize: '1rem', display: 'block' }}>{homeTeam.abbrev}</span>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{homeTeam.record}</span>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem', display: 'block', color: 'var(--black)' }}>{homeTeam.abbrev}</span>
+            <span style={{ fontSize: '0.68rem', color: 'var(--gray-400)' }}>{homeTeam.record}</span>
           </div>
-          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Local</span>
+          <span style={{ fontSize: '0.62rem', color: 'var(--gray-400)', fontWeight: 600 }}>Local</span>
         </div>
       </div>
 
       {/* ── BLOQUEO VIP ────────────────────────────────────────── */}
       {game.unlocked === false ? (
         <div style={{
-          padding: '18px',
-          background: 'var(--color-primary-light)',
-          border: '1.5px solid var(--color-primary-glow)',
+          padding: '16px',
+          background: 'var(--blue-light)',
+          border: '1.5px solid var(--blue-mid)',
           borderRadius: '10px',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '10px',
-          textAlign: 'center'
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          gap: '10px', textAlign: 'center'
         }}>
           <div style={{
             backgroundColor: 'var(--color-primary-glow)',
@@ -470,12 +468,14 @@ export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, 
           {/* ── TABS ─────────────────────────────────────────── */}
           <div style={{
             display: 'flex',
-            background: 'hsl(210, 20%, 94%)',
+            background: 'var(--bg-muted)',
             padding: '3px',
             borderRadius: '9px',
-            border: '1px solid var(--border-glass)',
-            fontSize: '0.72rem',
-            gap: '2px'
+            border: '1px solid var(--border)',
+            fontSize: '0.71rem',
+            gap: '2px',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}>
             {tabs.map(t => (
               <button key={t.key} onClick={() => setActiveTab(t.key)} style={tabStyle(t.key)}>
