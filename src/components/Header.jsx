@@ -1,23 +1,23 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Activity, Calendar, ShieldCheck, Zap, LogOut, User, Sun, Moon, Coins } from 'lucide-react';
+import { Activity, ShieldCheck, Zap, LogOut, User, Sun, Moon, Coins, Clock } from 'lucide-react';
 
 export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpenAdmin, adminNotifyCount = 0 }) {
-  const [timeStr, setTimeStr] = useState('');
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
+  const [timeStr, setTimeStr]     = useState('');
+  const [isDarkTheme, setIsDark]  = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('mlb_theme');
     if (saved === 'dark') {
       document.documentElement.classList.add('dark-theme');
-      setIsDarkTheme(true);
+      setIsDark(true);
     }
   }, []);
 
   const toggleTheme = () => {
     const next = !isDarkTheme;
-    setIsDarkTheme(next);
+    setIsDark(next);
     if (next) {
       document.documentElement.classList.add('dark-theme');
       localStorage.setItem('mlb_theme', 'dark');
@@ -28,142 +28,183 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpe
   };
 
   useEffect(() => {
-    const updateTime = () => {
+    const update = () => {
       const now = new Date();
       setTimeStr(now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
     };
-    updateTime();
-    const timer = setInterval(updateTime, 1000);
-    return () => clearInterval(timer);
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
   }, []);
 
+  /* ── estilos base del header (Facebook-style) ── */
+  const headerStyle = {
+    background: 'var(--bg-card)',
+    borderBottom: '1px solid var(--border)',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
+    padding: '0 16px',
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
+    marginBottom: '16px',
+  };
+
+  const innerStyle = {
+    maxWidth: '1320px',
+    margin: '0 auto',
+    height: '56px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+  };
+
+  const iconBoxStyle = {
+    width: '36px', height: '36px',
+    borderRadius: '50%',
+    background: 'var(--blue)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  };
+
+  const widgetStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '6px 12px',
+    background: 'var(--bg-section)',
+    borderRadius: '8px',
+    border: '1px solid var(--border)',
+  };
+
+  const iconBtnStyle = {
+    width: '36px', height: '36px',
+    borderRadius: '50%',
+    background: 'var(--bg-section)',
+    border: '1px solid var(--border)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'var(--transition)',
+    color: 'var(--text-secondary)',
+  };
+
   return (
-    <header className="glass-panel header-root" style={{ padding: '20px 24px', marginBottom: '30px', display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'space-between', alignItems: 'center', borderRadius: '16px' }}>
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-          <div style={{ backgroundColor: 'var(--color-primary-glow)', padding: '6px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Activity className="text-accent-gradient" style={{ width: '24px', height: '24px' }} />
-          </div>
-          <h1 className="text-gradient header-title-text" style={{ fontSize: '1.8rem', fontWeight: 800 }}>CONSEJERO VIP MLB</h1>
-        </div>
-        <p className="header-subtitle" style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span className="pulse-live"></span>
-          Mesa de Expertos en Las Vegas • Estadísticas y Tendencias Premium
-        </p>
-      </div>
+    <header style={headerStyle}>
+      <div style={innerStyle} className="header-root">
 
-      <div className="header-widgets" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
-        {/* Widget 1: Partidos analizados */}
-        <div className="glass-panel header-widget-item" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
-          <ShieldCheck style={{ color: 'var(--color-primary)', width: '20px', height: '20px' }} />
+        {/* LOGO / TÍTULO */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <div style={iconBoxStyle}>
+            <Activity style={{ width: '18px', height: '18px', color: '#fff' }} />
+          </div>
           <div>
-            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Partidos</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>{totalGames || 0} Analizados</span>
+            <h1 className="header-title-text text-gradient"
+              style={{ fontSize: '1.1rem', fontWeight: 800, lineHeight: 1.1 }}>
+              CONSEJERO VIP MLB
+            </h1>
+            <p className="header-subtitle"
+              style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '5px', lineHeight: 1 }}>
+              <span className="pulse-live" />
+              Mesa de Expertos • En Vivo
+            </p>
           </div>
         </div>
 
-        {/* Widget 2: Jugadas seguras */}
-        <div className="glass-panel header-widget-item" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px' }}>
-          <Zap style={{ color: 'var(--color-low-risk)', width: '20px', height: '20px' }} />
-          <div>
-            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Bajo Riesgo</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--color-low-risk)' }}>{lowRiskCount || 0} Sugeridas</span>
+        {/* WIDGETS CENTRALES */}
+        <div className="header-widgets" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+
+          {/* Partidos analizados */}
+          <div className="header-widget-item" style={widgetStyle}>
+            <ShieldCheck style={{ color: 'var(--blue)', width: '16px', height: '16px', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Partidos</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>{totalGames || 0} analizados</div>
+            </div>
+          </div>
+
+          {/* Bajo riesgo */}
+          <div className="header-widget-item" style={widgetStyle}>
+            <Zap style={{ color: 'var(--green-dark)', width: '16px', height: '16px', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Bajo Riesgo</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--green-dark)', lineHeight: 1.1 }}>{lowRiskCount || 0} sugeridas</div>
+            </div>
+          </div>
+
+          {/* Hora */}
+          <div className="header-widget-item" style={{ ...widgetStyle, minWidth: '120px' }}>
+            <Clock style={{ color: 'var(--text-muted)', width: '16px', height: '16px', flexShrink: 0 }} />
+            <div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Hora Local</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, fontFamily: 'monospace', lineHeight: 1.1 }}>{timeStr || '--:--'}</div>
+            </div>
           </div>
         </div>
 
-        {/* Widget 3: Hora del sistema */}
-        <div className="glass-panel header-widget-item" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', border: 'none', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', minWidth: '130px' }}>
-          <Calendar style={{ color: 'var(--text-secondary)', width: '20px', height: '20px' }} />
-          <div>
-            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Hora Local</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'monospace' }}>{timeStr || '--:--:--'}</span>
-          </div>
-        </div>
-
-        {/* Sección de Autenticación */}
+        {/* ZONA DERECHA: usuario, botones */}
         {user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {/* Botón de Cambio de Tema (Modo Claro/Oscuro) */}
-            <button 
-              className="btn-secondary" 
-              onClick={toggleTheme}
-              style={{ padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Cambiar Tema"
-            >
-              {isDarkTheme ? <Sun style={{ width: '16px', height: '16px' }} /> : <Moon style={{ width: '16px', height: '16px' }} />}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+
+            {/* Tema */}
+            <button onClick={toggleTheme} style={iconBtnStyle} title="Cambiar tema">
+              {isDarkTheme
+                ? <Sun  style={{ width: '16px', height: '16px' }} />
+                : <Moon style={{ width: '16px', height: '16px' }} />}
             </button>
 
-            {/* Panel de administración visible solo para admin */}
+            {/* Admin */}
             {user.role === 'admin' && (
-              <button 
-                className="btn-primary" 
+              <button
+                className="btn-primary"
                 onClick={onOpenAdmin}
-                style={{ 
-                  padding: '10px 16px', 
-                  borderRadius: '12px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px', 
-                  fontSize: '0.85rem', 
-                  fontWeight: 700,
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)',
-                  background: 'linear-gradient(135deg, hsl(217, 91%, 60%) 0%, hsl(220, 90%, 50%) 100%)',
-                  position: 'relative'
-                }}
-                title="Panel de Administración"
+                style={{ padding: '7px 12px', fontSize: '0.8rem', borderRadius: '8px', position: 'relative' }}
+                title="Administración"
               >
-                <ShieldCheck style={{ width: '16px', height: '16px' }} />
-                Administración
+                <ShieldCheck style={{ width: '14px', height: '14px' }} />
+                Admin
                 {adminNotifyCount > 0 && (
                   <span style={{
-                    position: 'absolute',
-                    top: '-6px',
-                    right: '-6px',
-                    backgroundColor: 'var(--color-high-risk)',
-                    color: '#ffffff',
-                    fontSize: '0.7rem',
-                    fontWeight: 800,
-                    borderRadius: '50%',
-                    width: '18px',
-                    height: '18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '2px solid hsl(222, 47%, 6%)',
-                    boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
-                  }}>
-                    {adminNotifyCount}
-                  </span>
+                    position: 'absolute', top: '-5px', right: '-5px',
+                    background: 'var(--red)', color: '#fff',
+                    fontSize: '0.65rem', fontWeight: 800,
+                    borderRadius: '50%', width: '17px', height: '17px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    border: '2px solid var(--bg-card)',
+                  }}>{adminNotifyCount}</span>
                 )}
               </button>
             )}
 
-            {/* Widget de Créditos / Saldo */}
-            <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', border: 'none', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px' }}>
-              <Coins style={{ color: 'var(--color-medium-risk)', width: '18px', height: '18px' }} />
+            {/* Créditos */}
+            <div style={{ ...widgetStyle, background: 'var(--blue-light)', borderColor: 'var(--blue-border)' }}>
+              <Coins style={{ color: 'var(--blue)', width: '15px', height: '15px', flexShrink: 0 }} />
               <div>
-                <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Créditos</span>
-                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                <div style={{ fontSize: '0.58rem', color: 'var(--blue)', fontWeight: 700, textTransform: 'uppercase' }}>Créditos</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--blue)', lineHeight: 1.1 }}>
                   {Math.floor(parseFloat(user.credits || 0))} 🪙
-                </span>
+                </div>
               </div>
             </div>
 
-            <div className="glass-panel" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '10px', border: 'none', background: 'var(--bg-input)', borderRadius: '12px' }}>
-              <User style={{ color: 'var(--color-primary)', width: '18px', height: '18px' }} />
-              <div>
-                <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Usuario</span>
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{user.username}</span>
+            {/* Usuario */}
+            <div style={{ ...widgetStyle }}>
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '50%',
+                background: 'var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+              }}>
+                <span style={{ color: '#fff', fontWeight: 800, fontSize: '0.8rem' }}>
+                  {(user.username || 'U')[0].toUpperCase()}
+                </span>
+              </div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                {user.username}
               </div>
             </div>
-            
-            <button 
-              className="btn-secondary" 
-              onClick={onLogout}
-              style={{ padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Cerrar Sesión"
-            >
-              <LogOut style={{ width: '16px', height: '16px', color: 'var(--color-high-risk)' }} />
+
+            {/* Logout */}
+            <button onClick={onLogout} style={{ ...iconBtnStyle }} title="Cerrar Sesión">
+              <LogOut style={{ width: '15px', height: '15px', color: 'var(--red)' }} />
             </button>
           </div>
         )}

@@ -237,7 +237,7 @@ export default function Home() {
   }
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container" style={{ paddingTop: '0' }}>
       {/* Header Premium */}
       <Header 
         totalGames={games.length} 
@@ -248,46 +248,37 @@ export default function Home() {
         adminNotifyCount={adminNotifyCount}
       />
 
-      {/* Banner de historial de jugadas si es fecha pasada */}
+      {/* Banner historial */}
       {date < todayDate && (
-        <div className="glass-panel" style={{ 
-          padding: '16px 20px', 
-          marginBottom: '24px', 
-          background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%)',
-          borderColor: 'rgba(59, 130, 246, 0.3)',
-          borderRadius: '12px',
+        <div style={{ 
+          padding: '12px 16px',
+          marginBottom: '16px',
+          background: 'var(--blue-light)',
+          border: '1px solid var(--blue-border)',
+          borderRadius: '10px',
           display: 'flex',
           alignItems: 'center',
           gap: '12px'
         }}>
-          <div style={{
-            backgroundColor: 'rgba(59, 130, 246, 0.15)',
-            padding: '8px',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
-            <Sparkles style={{ width: '18px', height: '18px', color: 'var(--color-primary)' }} />
-          </div>
+          <Sparkles style={{ width: '18px', height: '18px', color: 'var(--blue)', flexShrink: 0 }} />
           <div>
-            <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '2px' }}>
-              📅 Historial de la Mesa de Expertos (Verificación de Credibilidad)
+            <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--blue)', marginBottom: '2px' }}>
+              📅 Historial — Verificación de Credibilidad
             </h4>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              Estás visualizando la cartelera de fechas anteriores. Todos los análisis y proyecciones sugeridos han sido liberados gratuitamente para que audites nuestra efectividad y tasa de acierto.
+              Cartelera de fechas anteriores. Análisis liberados para auditar nuestra tasa de acierto.
             </p>
           </div>
         </div>
       )}
 
       {/* Grid Superior: Controles de Fecha y Destacados */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px', marginBottom: '16px' }}>
         
         {/* Panel de Controles */}
-        <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', justifyContent: 'center' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <SlidersHorizontal style={{ width: '18px', height: '18px', color: 'var(--color-primary)' }} />
+        <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', justifyContent: 'center' }}>
+          <h2 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <SlidersHorizontal style={{ width: '16px', height: '16px', color: 'var(--blue)' }} />
             Filtros y Calendario
           </h2>
           
@@ -301,12 +292,12 @@ export default function Home() {
                 onChange={handleDateChange}
                 style={{
                   width: '100%',
-                  padding: '12px 14px 12px 40px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--border-glass)',
-                  borderRadius: '10px',
+                  padding: '10px 12px 10px 38px',
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-input)',
+                  borderRadius: '8px',
                   color: 'var(--text-primary)',
-                  fontSize: '0.9rem',
+                  fontSize: '0.875rem',
                   outline: 'none',
                   cursor: 'pointer'
                 }}
@@ -366,12 +357,12 @@ export default function Home() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '12px 14px 12px 40px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--border-glass)',
-                  borderRadius: '10px',
+                  padding: '10px 12px 10px 38px',
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-input)',
+                  borderRadius: '8px',
                   color: 'var(--text-primary)',
-                  fontSize: '0.9rem',
+                  fontSize: '0.875rem',
                   outline: 'none'
                 }}
               />
@@ -380,13 +371,12 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Panel: Jugada Estrella del Día (Mayor Confianza) */}
+        {/* Panel: Jugada Estrella del Día */}
         {bestPlayOfDay && (
           bestPlayOfDay.unlocked === false ? (
             <div className="glass-panel" style={{ 
-              padding: '24px', 
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
-              borderColor: 'rgba(59, 130, 246, 0.15)',
+              padding: '20px', 
+              borderColor: 'var(--blue-border)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -429,9 +419,9 @@ export default function Home() {
             </div>
           ) : (
             <div className="glass-panel" style={{ 
-              padding: '24px', 
-              background: 'linear-gradient(135deg, hsla(217, 91%, 60%, 0.06) 0%, hsla(270, 91%, 60%, 0.02) 100%)',
-              borderColor: 'rgba(59, 130, 246, 0.25)',
+              padding: '20px',
+              background: 'var(--blue-light)',
+              borderColor: 'var(--blue-border)',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -477,72 +467,33 @@ export default function Home() {
       </div>
 
       {/* Tabs de Filtro de Riesgo */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-        <div className="risk-filter-tabs" style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.02)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
-          <button 
-            onClick={() => setRiskFilter('all')}
-            style={{
-              background: riskFilter === 'all' ? 'rgba(255,255,255,0.08)' : 'none',
-              border: 'none',
-              color: riskFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              transition: 'var(--transition-smooth)'
-            }}
-          >
-            Todos ({games.length})
-          </button>
-          <button 
-            onClick={() => setRiskFilter('Bajo')}
-            style={{
-              background: riskFilter === 'Bajo' ? 'var(--color-low-risk-bg)' : 'none',
-              border: 'none',
-              color: riskFilter === 'Bajo' ? 'var(--color-low-risk)' : 'var(--text-secondary)',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              transition: 'var(--transition-smooth)'
-            }}
-          >
-            Bajo Riesgo ({games.filter(g => g.prediction.riskLevel === 'Bajo').length})
-          </button>
-          <button 
-            onClick={() => setRiskFilter('Medio')}
-            style={{
-              background: riskFilter === 'Medio' ? 'var(--color-medium-risk-bg)' : 'none',
-              border: 'none',
-              color: riskFilter === 'Medio' ? 'var(--color-medium-risk)' : 'var(--text-secondary)',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              transition: 'var(--transition-smooth)'
-            }}
-          >
-            Riesgo Medio ({games.filter(g => g.prediction.riskLevel === 'Medio').length})
-          </button>
-          <button 
-            onClick={() => setRiskFilter('Alto')}
-            style={{
-              background: riskFilter === 'Alto' ? 'var(--color-high-risk-bg)' : 'none',
-              border: 'none',
-              color: riskFilter === 'Alto' ? 'var(--color-high-risk)' : 'var(--text-secondary)',
-              padding: '8px 16px',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontWeight: 600,
-              fontSize: '0.85rem',
-              transition: 'var(--transition-smooth)'
-            }}
-          >
-            Omitir / Alto Riesgo ({games.filter(g => g.prediction.riskLevel === 'Alto').length})
-          </button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+        <div className="risk-filter-tabs" style={{ display: 'flex', gap: '4px', background: 'var(--bg-card)', padding: '4px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+          {[
+            { key: 'all',   label: `Todos (${games.length})`,                                              activeColor: 'var(--blue)',        activeBg: 'var(--blue-light)' },
+            { key: 'Bajo',  label: `✅ Bajo Riesgo (${games.filter(g => g.prediction.riskLevel === 'Bajo').length})`,   activeColor: 'var(--green-dark)',  activeBg: 'var(--green-light)' },
+            { key: 'Medio', label: `⚠️ Medio (${games.filter(g => g.prediction.riskLevel === 'Medio').length})`,        activeColor: 'var(--yellow)',      activeBg: 'var(--yellow-light)' },
+            { key: 'Alto',  label: `❌ Evitar (${games.filter(g => g.prediction.riskLevel === 'Alto').length})`,         activeColor: 'var(--red)',         activeBg: 'var(--red-light)' },
+          ].map(({ key, label, activeColor, activeBg }) => (
+            <button
+              key={key}
+              onClick={() => setRiskFilter(key)}
+              style={{
+                background: riskFilter === key ? activeBg : 'transparent',
+                border: 'none',
+                color: riskFilter === key ? activeColor : 'var(--text-secondary)',
+                padding: '7px 14px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: riskFilter === key ? 700 : 500,
+                fontSize: '0.82rem',
+                transition: 'var(--transition)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         <button 
@@ -558,20 +509,20 @@ export default function Home() {
 
       {/* Grid de Partidos */}
       {loading ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '16px' }}>
-          <div style={{ width: '40px', height: '40px', border: '3px solid var(--border-glass)', borderTopColor: 'var(--color-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Consultando estadísticas y proyecciones de la Mesa...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '280px', gap: '14px' }}>
+          <div style={{ width: '36px', height: '36px', border: '3px solid var(--border)', borderTopColor: 'var(--blue)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Consultando estadísticas de la Mesa...</p>
         </div>
       ) : error ? (
-        <div className="glass-panel" style={{ padding: '40px', textAlign: 'center', borderColor: 'var(--color-high-risk-bg)', maxWidth: '600px', margin: '40px auto' }}>
-          <p style={{ color: 'var(--color-high-risk)', fontWeight: 600, fontSize: '1.1rem', marginBottom: '16px' }}>{error}</p>
+        <div className="glass-panel" style={{ padding: '36px', textAlign: 'center', borderColor: 'var(--red-border)', maxWidth: '560px', margin: '36px auto' }}>
+          <p style={{ color: 'var(--red)', fontWeight: 600, fontSize: '1rem', marginBottom: '14px' }}>{error}</p>
           <button className="btn-primary" onClick={() => fetchPredictions(date)}>Reintentar Conexión</button>
         </div>
       ) : filteredGames.length === 0 ? (
-        <div className="glass-panel" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          <HelpCircle style={{ width: '48px', height: '48px', color: 'var(--text-muted)', marginBottom: '16px' }} />
-          <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>No se encontraron partidos para mostrar.</p>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '6px' }}>Prueba cambiando la fecha o ajustando tus filtros de búsqueda.</p>
+        <div className="glass-panel" style={{ padding: '50px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+          <HelpCircle style={{ width: '40px', height: '40px', color: 'var(--text-muted)', marginBottom: '14px' }} />
+          <p style={{ fontSize: '1rem', fontWeight: 600 }}>No se encontraron partidos para mostrar.</p>
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>Prueba cambiando la fecha o ajustando los filtros.</p>
         </div>
       ) : (
         <div className="grid-predictions">
