@@ -5,22 +5,25 @@ import { Activity, Calendar, ShieldCheck, Zap, LogOut, User, Sun, Moon, Coins } 
 
 export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpenAdmin, adminNotifyCount = 0 }) {
   const [timeStr, setTimeStr] = useState('');
-  const [isLightTheme, setIsLightTheme] = useState(false);
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
 
   useEffect(() => {
-    const isLight = document.documentElement.classList.contains('light-theme');
-    setIsLightTheme(isLight);
+    const saved = localStorage.getItem('mlb_theme');
+    if (saved === 'dark') {
+      document.documentElement.classList.add('dark-theme');
+      setIsDarkTheme(true);
+    }
   }, []);
 
   const toggleTheme = () => {
-    const nextTheme = !isLightTheme;
-    setIsLightTheme(nextTheme);
-    if (nextTheme) {
-      document.documentElement.classList.add('light-theme');
-      localStorage.setItem('mlb_theme', 'light');
-    } else {
-      document.documentElement.classList.remove('light-theme');
+    const next = !isDarkTheme;
+    setIsDarkTheme(next);
+    if (next) {
+      document.documentElement.classList.add('dark-theme');
       localStorage.setItem('mlb_theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark-theme');
+      localStorage.setItem('mlb_theme', 'light');
     }
   };
 
@@ -87,7 +90,7 @@ export default function Header({ totalGames, lowRiskCount, user, onLogout, onOpe
               style={{ padding: '12px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               title="Cambiar Tema"
             >
-              {isLightTheme ? <Moon style={{ width: '16px', height: '16px' }} /> : <Sun style={{ width: '16px', height: '16px' }} />}
+              {isDarkTheme ? <Sun style={{ width: '16px', height: '16px' }} /> : <Moon style={{ width: '16px', height: '16px' }} />}
             </button>
 
             {/* Panel de administración visible solo para admin */}

@@ -3,17 +3,215 @@
 import React, { useState } from 'react';
 import { 
   CheckCircle2, AlertTriangle, AlertCircle, BarChart3, 
-  Sparkles, ShieldCheck, Compass, Info, HelpCircle, User
+  ShieldCheck, TrendingUp, TrendingDown, Minus
 } from 'lucide-react';
+
+/* ── helpers ───────────────────────────────────────────────── */
+
+function buildTeamRecommendations(game) {
+  const { homeTeam, awayTeam, prediction, expandedPlays, pitchers, odds } = game;
+
+  const YES = (text, sub) => ({ type: 'yes',     text, sub });
+  const NO  = (text, sub) => ({ type: 'no',      text, sub });
+  const MEH = (text, sub) => ({ type: 'neutral', text, sub });
+
+  const confidence = prediction?.confidence ?? 0;
+  const bestPlay   = prediction?.bestPlay   ?? '';
+  const riskLevel  = prediction?.riskLevel  ?? 'Alto';
+
+  // Detectar equipo favorito del ML
+  const awayOdds = parseFloat(expandedPlays?.moneyline?.awayOdds?.replace(/[^0-9\-+.]/g, '') || 0);
+  const homeOdds = parseFloat(expandedPlays?.moneyline?.homeOdds?.replace(/[^0-9\-+.]/g, '') || 0);
+  const awayFavorite = awayOdds < homeOdds; // negativo más grande = favorito
+  const homeFavorite = !awayFavorite;
+
+  // Over/Under line
+  const ouLine = parseFloat(expandedPlays?.totals?.line || 8.5);
+
+  // --- VISITANTE ---
+  const awayRecs = [];
+  const awayNos  = [];
+
+  if (awayFavorite) {
+    awayRecs.push(YES(`Moneyline (ML) favorito`, `Cuota ${expandedPlays?.moneyline?.awayOdds ?? '—'}`));
+  } else {
+    awayNos.push(NO(`Moneyline (ML) en contra`, `Cuota ${expandedPlays?.moneyline?.awayOdds ?? '—'} — es el underdog`));
+  }
+
+  const bestIncludesAway =
+    bestPlay.includes(awayTeam.abbrev) || bestPlay.includes(awayTeam.name);
+
+  if (bestIncludesAway && riskLevel !== 'Alto') {
+    awayRecs.push(YES(`Jugada destacada`, bestPlay));
+  } else if (!bestIncludesAway && riskLevel === 'Bajo') {
+    awayNos.push(NO(`No es la jugada principal`, `El sistema prefiere ${bestPlay}`));
+  }
+
+  const awayK = expandedPlays?.pitcherProps?.away?.safeK;
+  if (awayK) {
+    awayRecs.push(YES(`Ponches sugeridos: ${awayK.play}`, `Cuota ${awayK.odds} — seguro estadístico`));
+  }
+
+  const awayF5conf = expandedPlays?.first5Innings?.confidenceAway;
+  if (awayF5conf) {
+    if (awayF5conf >= 55) {
+      awayRecs.push(YES(`Primeros 5 innings: ${awayF5conf}% confianza`, expandedPlays?.first5Innings?.awayOdds));
+    } else {
+      awayNos.push(NO(`Primeros 5 innings débil: ${awayF5conf}%`, `Evitar apuesta de 1ra mitad`));
+    }
+  }
+
+  if (ouLine > 9) awayNos.push(NO(`Línea de carreras alta (${ouLine})`, `Riesgo de Over inflado`));
+
+  const away1stInning = expandedPlays?.firstInning?.recommendation;
+  if (away1stInning && away1stInning.toLowerCase().includes(awayTeam.abbrev.toLowerCase())) {
+    awayRecs.push(YES(`1ra entrada recomendada`, `Sistema: ${away1stInning}`));
+  }
+
+  // --- LOCAL ---
+  const homeRecs = [];
+  const homeNos  = [];
+
+  if (homeFavorite) {
+    homeRecs.push(YES(`Moneyline (ML) favorito`, `Cuota ${expandedPlays?.moneyline?.homeOdds ?? '—'}`));
+  } else {
+    homeNos.push(NO(`Moneyline (ML) en contra`, `Cuota ${expandedPlays?.moneyline?.homeOdds ?? '—'} — es el underdog`));
+  }
+
+  const bestIncludesHome =
+    bestPlay.includes(homeTeam.abbrev) || bestPlay.includes(homeTeam.name);
+
+  if (bestIncludesHome && riskLevel !== 'Alto') {
+    homeRecs.push(YES(`Jugada destacada`, bestPlay));
+  } else if (!bestIncludesHome && riskLevel === 'Bajo') {
+    homeNos.push(NO(`No es la jugada principal`, `El sistema prefiere ${bestPlay}`));
+  }
+
+  const homeK = expandedPlays?.pitcherProps?.home?.safeK;
+  if (homeK) {
+    homeRecs.push(YES(`Ponches sugeridos: ${homeK.play}`, `Cuota ${homeK.odds} — seguro estadístico`));
+  }
+
+  const homeF5conf = expandedPlays?.first5Innings?.confidenceHome;
+  if (homeF5conf) {
+    if (homeF5conf >= 55) {
+      homeRecs.push(YES(`Primeros 5 innings: ${homeF5conf}% confianza`, expandedPlays?.first5Innings?.homeOdds));
+    } else {
+      homeNos.push(NO(`Primeros 5 innings débil: ${homeF5conf}%`, `Evitar apuesta de 1ra mitad`));
+    }
+  }
+
+  const hrHitter = expandedPlays?.batterProps?.home?.hrHitter;
+  if (hrHitter && hrHitter.confidence >= 60) {
+    homeRecs.push(YES(`HR candidato: ${hrHitter.name}`, `${hrHitter.odds} (${hrHitter.confidence}% conf)`));
+  }
+
+  const baseStealer = expandedPlays?.batterProps?.home?.baseStealer;
+  if (baseStealer) {
+    homeRecs.push(YES(`Base robada: ${baseStealer.name}`, `Cuota ${baseStealer.odds}`));
+  }
+
+  return { awayRecs, awayNos, homeRecs, homeNos };
+}
+
+/* ── sub-componentes ───────────────────────────────────────── */
+
+function RecRow({ item }) {
+  const icon = item.type === 'yes' ? '✅' : item.type === 'no' ? '❌' : '⚠️';
+  return (
+    <div className={`rec-row ${item.type}`}>
+      <span className="rec-icon">{icon}</span>
+      <div>
+        <span className="rec-text">{item.text}</span>
+        {item.sub && <span className="rec-sub"> — {item.sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+function TeamRecPanel({ label, abbrev, logo, recs, nos, side }) {
+  const borderColor = side === 'away'
+    ? 'hsl(217, 85%, 88%)'
+    : 'hsl(142, 55%, 82%)';
+  const accentColor = side === 'away'
+    ? 'hsl(217, 85%, 50%)'
+    : 'hsl(142, 60%, 34%)';
+
+  return (
+    <div style={{
+      borderRadius: '10px',
+      border: `1.5px solid ${borderColor}`,
+      overflow: 'hidden',
+      flex: 1,
+      minWidth: 0
+    }}>
+      {/* Cabecera del equipo */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '8px 12px',
+        background: `linear-gradient(135deg, ${accentColor}12, ${accentColor}06)`,
+        borderBottom: `1px solid ${borderColor}`
+      }}>
+        <img src={logo} alt={abbrev}
+          style={{ width: '22px', height: '22px', objectFit: 'contain' }}
+          onError={e => { e.target.src = 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'; }}
+        />
+        <span style={{ fontWeight: 800, fontSize: '0.82rem', color: accentColor }}>{abbrev}</span>
+        <span style={{ fontWeight: 500, fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
+          {label}
+        </span>
+      </div>
+
+      {/* Sí jugar */}
+      {recs.length > 0 && (
+        <div>
+          <div style={{
+            fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
+            letterSpacing: '0.06em', color: 'var(--color-low-risk)',
+            padding: '5px 12px 3px', background: 'var(--color-low-risk-bg)'
+          }}>
+            ✅ Se recomienda
+          </div>
+          {recs.map((r, i) => <RecRow key={i} item={r} />)}
+        </div>
+      )}
+
+      {/* No jugar */}
+      {nos.length > 0 && (
+        <div>
+          <div style={{
+            fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase',
+            letterSpacing: '0.06em', color: 'var(--color-high-risk)',
+            padding: '5px 12px 3px', background: 'var(--color-high-risk-bg)'
+          }}>
+            ❌ No se recomienda
+          </div>
+          {nos.map((n, i) => <RecRow key={i} item={n} />)}
+        </div>
+      )}
+
+      {recs.length === 0 && nos.length === 0 && (
+        <div style={{ padding: '10px 12px', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          Sin datos suficientes
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── componente principal ──────────────────────────────────── */
 
 export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, onCompare }) {
   const { homeTeam, awayTeam, pitchers, odds, status, prediction, expandedPlays, stadium, climate } = game;
-  const [activeTab, setActiveTab] = useState('lines'); // lines, innings, pitching, batting
+  const [activeTab, setActiveTab] = useState('resumen'); // resumen, lineas, innings, pitching, bateo
   const [unlocking, setUnlocking] = useState(false);
 
-  const isLive = status.state === 'live';
+  const isLive     = status.state === 'live';
   const isFinished = status.state === 'finished';
 
+  // ── unlock ──────────────────────────────────────────────────
   const handleUnlockClick = async () => {
     if (!user) return;
     const credits = parseFloat(user.credits || 0);
@@ -21,10 +219,7 @@ export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, 
       alert('Créditos insuficientes. Por favor realiza una recarga enviando un comprobante en el menú de soporte (burbuja de chat abajo a la derecha).');
       return;
     }
-    
-    if (!confirm('¿Deseas desbloquear este análisis por 10 créditos ($1.00 USD)?')) {
-      return;
-    }
+    if (!confirm('¿Deseas desbloquear este análisis por 10 créditos ($1.00 USD)?')) return;
 
     setUnlocking(true);
     try {
@@ -34,12 +229,10 @@ export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, 
         body: JSON.stringify({ email: user.email, game_id: game.id })
       });
       const data = await response.json();
-      
       if (!response.ok || data.success === false) {
         alert(data.error || 'Ocurrió un error al desbloquear el pronóstico.');
       } else {
-        const updatedUser = { ...user, credits: data.credits };
-        onUpdateCredits(updatedUser);
+        onUpdateCredits({ ...user, credits: data.credits });
         onUnlock();
       }
     } catch (err) {
@@ -50,57 +243,40 @@ export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, 
     }
   };
 
+  // ── resultado final ─────────────────────────────────────────
   const checkSuccess = () => {
     if (status.state !== 'finished' || !prediction?.bestPlay) return null;
     const homeScore = status.scoreHome ?? 0;
     const awayScore = status.scoreAway ?? 0;
-    const bestPlay = prediction.bestPlay;
-    
+    const bestPlay  = prediction.bestPlay;
     if (bestPlay.includes('Ganador') || bestPlay.includes('Moneyline')) {
       const isHomeWin = homeScore > awayScore;
-      if (bestPlay.includes(homeTeam.abbrev) || bestPlay.includes(homeTeam.name)) {
-        return isHomeWin;
-      }
-      if (bestPlay.includes(awayTeam.abbrev) || bestPlay.includes(awayTeam.name)) {
-        return !isHomeWin;
-      }
+      if (bestPlay.includes(homeTeam.abbrev) || bestPlay.includes(homeTeam.name)) return isHomeWin;
+      if (bestPlay.includes(awayTeam.abbrev) || bestPlay.includes(awayTeam.name)) return !isHomeWin;
     }
-    
     if (bestPlay.includes('Menos de') || bestPlay.includes('Under')) {
       const total = homeScore + awayScore;
-      const line = parseFloat(bestPlay.match(/[\d.]+/)?.[0] || 8.5);
+      const line  = parseFloat(bestPlay.match(/[\d.]+/)?.[0] || 8.5);
       return total < line;
     }
     if (bestPlay.includes('Más de') || bestPlay.includes('Over')) {
       const total = homeScore + awayScore;
-      const line = parseFloat(bestPlay.match(/[\d.]+/)?.[0] || 8.5);
+      const line  = parseFloat(bestPlay.match(/[\d.]+/)?.[0] || 8.5);
       return total > line;
     }
-    
     return (game.id % 5 !== 0);
   };
 
+  // ── estilos de riesgo ───────────────────────────────────────
   const getRiskDetails = (level) => {
     switch (level) {
       case 'Bajo':
-        return {
-          className: 'risk-bajo',
-          icon: <CheckCircle2 style={{ width: '14px', height: '14px' }} />,
-          label: 'Bajo Riesgo'
-        };
+        return { className: 'risk-bajo', icon: <CheckCircle2 style={{ width: '13px', height: '13px' }} />, label: 'Bajo Riesgo' };
       case 'Medio':
-        return {
-          className: 'risk-medio',
-          icon: <AlertTriangle style={{ width: '14px', height: '14px' }} />,
-          label: 'Riesgo Medio'
-        };
+        return { className: 'risk-medio', icon: <AlertTriangle style={{ width: '13px', height: '13px' }} />, label: 'Riesgo Medio' };
       case 'Alto':
       default:
-        return {
-          className: 'risk-alto',
-          icon: <AlertCircle style={{ width: '14px', height: '14px' }} />,
-          label: 'Evitar / Alto Riesgo'
-        };
+        return { className: 'risk-alto', icon: <AlertCircle style={{ width: '13px', height: '13px' }} />, label: 'Alto Riesgo — Evitar' };
     }
   };
 
@@ -111,50 +287,72 @@ export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, 
     return 'var(--color-high-risk)';
   };
 
-  const radius = 35;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = prediction?.confidence 
+  const radius         = 35;
+  const circumference  = 2 * Math.PI * radius;
+  const strokeDashoffset = prediction?.confidence
     ? circumference - (prediction.confidence / 100) * circumference
     : circumference;
 
-  return (
-    <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px', position: 'relative', overflow: 'hidden' }}>
-      
-      {/* Glow superior dinámico de acuerdo al riesgo */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '4px',
-        background: prediction.riskLevel === 'Bajo' 
-          ? 'linear-gradient(90deg, var(--color-low-risk), transparent)' 
-          : prediction.riskLevel === 'Medio'
-            ? 'linear-gradient(90deg, var(--color-medium-risk), transparent)'
-            : 'linear-gradient(90deg, var(--color-high-risk), transparent)'
-      }} />
+  // ── riesgo borde top ─────────────────────────────────────────
+  const topBarColor =
+    prediction.riskLevel === 'Bajo'  ? 'var(--color-low-risk)'    :
+    prediction.riskLevel === 'Medio' ? 'var(--color-medium-risk)' :
+                                       'var(--color-high-risk)';
 
-      {/* Cabecera del Card: Estado de juego y Badge de Riesgo */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {isLive && <span className="pulse-live"></span>}
-          <span className="badge" style={{ 
+  // ── recomendaciones por equipo ───────────────────────────────
+  const { awayRecs, awayNos, homeRecs, homeNos } = game.unlocked !== false
+    ? buildTeamRecommendations(game)
+    : { awayRecs: [], awayNos: [], homeRecs: [], homeNos: [] };
+
+  // ── tab helpers ──────────────────────────────────────────────
+  const tabs = [
+    { key: 'resumen',  label: '🎯 Resumen' },
+    { key: 'lineas',   label: 'Líneas' },
+    { key: 'innings',  label: 'Innings' },
+    { key: 'pitching', label: 'Ponches' },
+    { key: 'bateo',    label: 'Bateo' },
+  ];
+
+  const tabStyle = (key) => ({
+    flex: 1,
+    padding: '6px 4px',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontWeight: 600,
+    fontSize: '0.72rem',
+    transition: 'var(--transition-smooth)',
+    background: activeTab === key ? '#ffffff' : 'transparent',
+    color: activeTab === key ? 'var(--text-primary)' : 'var(--text-secondary)',
+    boxShadow: activeTab === key ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+  });
+
+  const darkTabStyle = (key) => ({
+    ...tabStyle(key),
+    background: activeTab === key ? 'rgba(255,255,255,0.10)' : 'transparent',
+    boxShadow: 'none',
+  });
+
+  return (
+    <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', overflow: 'hidden' }}>
+
+      {/* Barra de riesgo superior */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: topBarColor, borderRadius: '14px 14px 0 0' }} />
+
+      {/* Cabecera: estado + badge de riesgo */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+          {isLive && <span className="pulse-live" />}
+          <span className="badge" style={{
             color: isLive ? 'var(--color-high-risk)' : isFinished ? 'var(--text-muted)' : 'var(--color-primary)',
-            borderColor: isLive ? 'rgba(239, 68, 68, 0.2)' : 'var(--border-glass)',
-            fontWeight: isLive ? 600 : 500
+            fontWeight: isLive ? 700 : 500,
+            borderColor: isLive ? 'var(--color-high-risk-border)' : 'var(--border-glass)'
           }}>
-            {isFinished ? 'FINAL' : isLive ? 'EN VIVO - ' + status.detail : (() => {
+            {isFinished ? 'FINAL' : isLive ? '🔴 EN VIVO - ' + status.detail : (() => {
               if (game.gameDate) {
                 try {
-                  const dateObj = new Date(game.gameDate);
-                  return dateObj.toLocaleTimeString('es-ES', { 
-                    hour: '2-digit', 
-                    minute: '2-digit', 
-                    hour12: true 
-                  });
-                } catch (err) {
-                  return status.detail;
-                }
+                  return new Date(game.gameDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true });
+                } catch { return status.detail; }
               }
               return status.detail;
             })()}
@@ -166,406 +364,386 @@ export default function PredictionCard({ game, user, onUnlock, onUpdateCredits, 
         </span>
       </div>
 
-      {/* Sección Equipos y Marcador */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '5px 0' }}>
+      {/* Equipos y marcador */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         {/* Visitante */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '30%', gap: '8px', textAlign: 'center' }}>
-          <img 
-            src={awayTeam.logo} 
-            alt={awayTeam.name} 
-            style={{ width: '44px', height: '44px', objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }}
-            onError={(e) => { e.target.src = 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'; }}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32%', gap: '6px', textAlign: 'center' }}>
+          <img src={awayTeam.logo} alt={awayTeam.name}
+            style={{ width: '46px', height: '46px', objectFit: 'contain' }}
+            onError={e => { e.target.src = 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'; }}
           />
           <div>
-            <span style={{ fontWeight: 800, fontSize: '1.05rem', display: 'block' }}>{awayTeam.abbrev}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{awayTeam.record}</span>
+            <span style={{ fontWeight: 800, fontSize: '1rem', display: 'block' }}>{awayTeam.abbrev}</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{awayTeam.record}</span>
           </div>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Visitante</span>
         </div>
 
-        {/* Marcador Central */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '30%' }}>
+        {/* Centro */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', width: '28%' }}>
           {(isLive || isFinished) ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <span style={{ fontSize: '1.6rem', fontWeight: 800 }}>{status.scoreAway ?? 0}</span>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>VS</span>
-              <span style={{ fontSize: '1.6rem', fontWeight: 800 }}>{status.scoreHome ?? 0}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '2rem', fontWeight: 800 }}>{status.scoreAway ?? 0}</span>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>-</span>
+              <span style={{ fontSize: '2rem', fontWeight: 800 }}>{status.scoreHome ?? 0}</span>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600 }}>VS</span>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px' }}>ESTADIO</span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100px' }}>
-                {stadium?.name.split(' ')[0]}
-              </span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '0.06em' }}>VS</span>
+              {stadium?.name && (
+                <>
+                  <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '4px' }}>ESTADIO</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 700, marginTop: '2px', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90px' }}>
+                    {stadium.name.split(' ')[0]}
+                  </span>
+                </>
+              )}
             </div>
           )}
         </div>
 
         {/* Local */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '30%', gap: '8px', textAlign: 'center' }}>
-          <img 
-            src={homeTeam.logo} 
-            alt={homeTeam.name} 
-            style={{ width: '44px', height: '44px', objectFit: 'contain', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))' }}
-            onError={(e) => { e.target.src = 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'; }}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '32%', gap: '6px', textAlign: 'center' }}>
+          <img src={homeTeam.logo} alt={homeTeam.name}
+            style={{ width: '46px', height: '46px', objectFit: 'contain' }}
+            onError={e => { e.target.src = 'https://a.espncdn.com/i/teamlogos/default-team-logo-500.png'; }}
           />
           <div>
-            <span style={{ fontWeight: 800, fontSize: '1.05rem', display: 'block' }}>{homeTeam.abbrev}</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{homeTeam.record}</span>
+            <span style={{ fontWeight: 800, fontSize: '1rem', display: 'block' }}>{homeTeam.abbrev}</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{homeTeam.record}</span>
           </div>
+          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Local</span>
         </div>
       </div>
 
-      {/* Condicional de bloqueo VIP */}
+      {/* ── BLOQUEO VIP ────────────────────────────────────────── */}
       {game.unlocked === false ? (
-        <div className="glass-panel" style={{
-          padding: '20px',
-          background: 'rgba(59, 130, 246, 0.02)',
-          border: '1px solid rgba(59, 130, 246, 0.12)',
-          borderRadius: '12px',
+        <div style={{
+          padding: '18px',
+          background: 'var(--color-primary-light)',
+          border: '1.5px solid var(--color-primary-glow)',
+          borderRadius: '10px',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          gap: '12px',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden'
+          gap: '10px',
+          textAlign: 'center'
         }}>
           <div style={{
-            backgroundColor: 'rgba(59, 130, 246, 0.08)',
-            padding: '12px',
+            backgroundColor: 'var(--color-primary-glow)',
+            padding: '10px',
             borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}>
-            <ShieldCheck style={{ width: '28px', height: '28px', color: 'var(--color-primary)' }} />
+            <ShieldCheck style={{ width: '24px', height: '24px', color: 'var(--color-primary)' }} />
           </div>
-          
           <div>
-            <h4 style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
-              🔒 Pronóstico VIP Bloqueado
+            <h4 style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '4px' }}>
+              🔒 Análisis VIP Bloqueado
             </h4>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.4', padding: '0 10px' }}>
-              Desbloquea el análisis de la **Mesa de Expertos** por **10 créditos** ($1.00 USD). Incluye ponches, bateo, innings y la recomendación principal.
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+              Desbloquea el análisis completo: recomendaciones por equipo, ponches, innings, bateo y la jugada principal — por <strong>10 créditos ($1.00 USD)</strong>.
             </p>
           </div>
-
           <button
             onClick={handleUnlockClick}
             disabled={unlocking}
             className="btn-primary"
-            style={{
-              width: '100%',
-              fontSize: '0.8rem',
-              padding: '10px',
-              borderRadius: '10px',
-              justifyContent: 'center',
-              boxShadow: 'none'
-            }}
+            style={{ width: '100%', justifyContent: 'center', borderRadius: '8px' }}
           >
             {unlocking ? (
-              <span className="spin-icon" style={{
-                width: '14px', height: '14px', border: '2px solid rgba(255,255,255,0.05)',
-                borderTopColor: '#ffffff', borderRadius: '50%', display: 'inline-block',
+              <span style={{
+                width: '14px', height: '14px',
+                border: '2px solid rgba(255,255,255,0.25)',
+                borderTopColor: '#ffffff',
+                borderRadius: '50%',
+                display: 'inline-block',
                 animation: 'spin 1s linear infinite'
-              }}></span>
-            ) : (
-              <>Desbloquear Pronóstico (10 🪙)</>
-            )}
+              }} />
+            ) : <>Desbloquear (10 🪙)</>}
           </button>
         </div>
       ) : (
         <>
-          {/* PESTAÑAS INTERACTIVAS */}
-          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.02)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border-glass)', fontSize: '0.75rem' }}>
-            <button 
-              onClick={() => setActiveTab('lines')}
-              style={{
-                flex: 1, padding: '6px 4px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
-                background: activeTab === 'lines' ? 'rgba(255, 255, 255, 0.08)' : 'none',
-                color: activeTab === 'lines' ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
-            >
-              Líneas
-            </button>
-            <button 
-              onClick={() => setActiveTab('innings')}
-              style={{
-                flex: 1, padding: '6px 4px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
-                background: activeTab === 'innings' ? 'rgba(255, 255, 255, 0.08)' : 'none',
-                color: activeTab === 'innings' ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
-            >
-              Innings
-            </button>
-            <button 
-              onClick={() => setActiveTab('pitching')}
-              style={{
-                flex: 1, padding: '6px 4px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
-                background: activeTab === 'pitching' ? 'rgba(255, 255, 255, 0.08)' : 'none',
-                color: activeTab === 'pitching' ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
-            >
-              Ponches
-            </button>
-            <button 
-              onClick={() => setActiveTab('batting')}
-              style={{
-                flex: 1, padding: '6px 4px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
-                background: activeTab === 'batting' ? 'rgba(255, 255, 255, 0.08)' : 'none',
-                color: activeTab === 'batting' ? 'var(--text-primary)' : 'var(--text-secondary)'
-              }}
-            >
-              Bateo
-            </button>
+          {/* ── TABS ─────────────────────────────────────────── */}
+          <div style={{
+            display: 'flex',
+            background: 'hsl(210, 20%, 94%)',
+            padding: '3px',
+            borderRadius: '9px',
+            border: '1px solid var(--border-glass)',
+            fontSize: '0.72rem',
+            gap: '2px'
+          }}>
+            {tabs.map(t => (
+              <button key={t.key} onClick={() => setActiveTab(t.key)} style={tabStyle(t.key)}>
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          {/* CONTENIDO DE PESTAÑAS */}
-          <div style={{ minHeight: '140px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-            
-            {/* PESTAÑA: LÍNEAS PRINCIPALES */}
-            {activeTab === 'lines' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {/* Moneyline */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', padding: '6px 10px', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Ganador (ML)</span>
-                  <div style={{ display: 'flex', gap: '10px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    <span>{awayTeam.abbrev}: <strong style={{ color: 'var(--color-primary)' }}>{expandedPlays?.moneyline.awayOdds}</strong></span>
-                    <span>{homeTeam.abbrev}: <strong style={{ color: 'var(--color-primary)' }}>{expandedPlays?.moneyline.homeOdds}</strong></span>
-                  </div>
-                </div>
+          {/* ── CONTENIDO DE TABS ────────────────────────────── */}
+          <div style={{ minHeight: '120px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-                {/* Run Line / Hándicap */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', padding: '6px 10px', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Hándicap (Run Line)</span>
-                  <div style={{ display: 'flex', gap: '10px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    <span>{expandedPlays?.runLine.favName} {expandedPlays?.runLine.favLine}: <strong style={{ color: 'var(--text-primary)' }}>{expandedPlays?.runLine.favOdds}</strong></span>
-                    <span>{expandedPlays?.runLine.undName} {expandedPlays?.runLine.undLine}: <strong style={{ color: 'var(--text-primary)' }}>{expandedPlays?.runLine.undOdds}</strong></span>
-                  </div>
-                </div>
+            {/* RESUMEN — sección principal nueva */}
+            {activeTab === 'resumen' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-                {/* Over/Under */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.01)', padding: '6px 10px', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total Carreras (O/U)</span>
-                  <div style={{ display: 'flex', gap: '10px', fontSize: '0.75rem', fontWeight: 700 }}>
-                    <span>Línea: <strong style={{ color: 'var(--color-medium-risk)' }}>{expandedPlays?.totals.line}</strong></span>
-                    <span>Más: <strong style={{ color: 'var(--text-primary)' }}>{expandedPlays?.totals.overOdds}</strong></span>
-                    <span>Menos: <strong style={{ color: 'var(--text-primary)' }}>{expandedPlays?.totals.underOdds}</strong></span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* PESTAÑA: ENTRADAS */}
-            {activeTab === 'innings' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {/* 1ra Entrada */}
-                <div className="glass-panel" style={{ padding: '8px 12px', border: 'none', background: 'rgba(255,255,255,0.01)', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>
-                    <span>Resultado 1ra Entrada</span>
-                    <span style={{ color: 'var(--color-low-risk)' }}>Recomienda: {expandedPlays?.firstInning.recommendation}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700 }}>
-                    <span>{awayTeam.abbrev}: {expandedPlays?.firstInning.awayOdds} ({expandedPlays?.firstInning.probAway}%)</span>
-                    <span>Empate: {expandedPlays?.firstInning.tieOdds} ({expandedPlays?.firstInning.probTie}%)</span>
-                    <span>{homeTeam.abbrev}: {expandedPlays?.firstInning.homeOdds} ({expandedPlays?.firstInning.probHome}%)</span>
-                  </div>
-                </div>
-
-                {/* 1ra Mitad (5 Innings) */}
-                <div className="glass-panel" style={{ padding: '8px 12px', border: 'none', background: 'rgba(255,255,255,0.01)', borderRadius: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '4px' }}>
-                    <span>Resultado 1ra Mitad (5 Innings)</span>
-                    <span style={{ color: 'var(--color-primary)' }}>Recomienda: {expandedPlays?.first5Innings.recommendation}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700 }}>
-                    <span>{awayTeam.abbrev}: {expandedPlays?.first5Innings.awayOdds} ({expandedPlays?.first5Innings.confidenceAway}%)</span>
-                    <span>{homeTeam.abbrev}: {expandedPlays?.first5Innings.homeOdds} ({expandedPlays?.first5Innings.confidenceHome}%)</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* PESTAÑA: PONCHES */}
-            {activeTab === 'pitching' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
-                
-                {/* Lanzador Visitante Ponches */}
-                <div style={{ borderBottom: '1px solid var(--border-glass)', paddingBottom: '6px' }}>
-                  <span style={{ fontWeight: 700, color: 'var(--text-secondary)', display: 'block', fontSize: '0.7rem' }}>
-                    {pitchers.away.name} (K/9: {pitchers.away.k9 || '8.5'})
-                  </span>
-                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '4px 0', scrollbarWidth: 'none' }}>
-                    {expandedPlays?.pitcherProps.away.kProps.slice(0, 4).map((k, idx) => (
-                      <span key={idx} className="badge" style={{ flexShrink: 0, fontSize: '0.7rem', borderColor: k.line === expandedPlays?.pitcherProps.away.safeK.play.split(' ')[1] ? 'var(--color-low-risk)' : 'var(--border-glass)' }}>
-                        {k.line}: <strong style={{ color: 'var(--text-primary)' }}>{k.odds}</strong>
+                {/* Panel Jugada Principal */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '14px',
+                  padding: '12px 14px',
+                  background: 'linear-gradient(135deg, var(--color-primary-light), transparent)',
+                  border: '1.5px solid var(--color-primary-glow)',
+                  borderRadius: '10px'
+                }}>
+                  {/* Dial */}
+                  <div className="dial-container">
+                    <svg className="dial-svg" viewBox="0 0 90 90">
+                      <circle className="dial-bg" cx="45" cy="45" r={radius} />
+                      <circle
+                        className="dial-progress"
+                        cx="45" cy="45" r={radius}
+                        stroke={getConfidenceColor(prediction.confidence)}
+                        strokeDasharray={circumference}
+                        strokeDashoffset={strokeDashoffset}
+                      />
+                    </svg>
+                    <div className="dial-text">
+                      <span className="dial-number" style={{ color: getConfidenceColor(prediction.confidence), fontSize: '1rem' }}>
+                        {prediction.confidence}%
                       </span>
-                    ))}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--color-low-risk)', marginTop: '2px', fontWeight: 600 }}>
-                    ★ Sugerido Seguro: {expandedPlays?.pitcherProps.away.safeK.play} ({expandedPlays?.pitcherProps.away.safeK.odds})
+
+                  {/* Texto */}
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block', letterSpacing: '0.06em' }}>
+                      🎯 Jugada Principal
+                    </span>
+                    <span style={{ fontSize: '0.92rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', margin: '3px 0' }}>
+                      {prediction.bestPlay}
+                    </span>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>
+                      {climate?.split('.')[0]}
+                    </span>
                   </div>
                 </div>
 
-                {/* Lanzador Local Ponches */}
+                {/* Recomendaciones por equipo */}
                 <div>
-                  <span style={{ fontWeight: 700, color: 'var(--text-secondary)', display: 'block', fontSize: '0.7rem' }}>
-                    {pitchers.home.name} (K/9: {pitchers.home.k9 || '8.5'})
-                  </span>
-                  <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', padding: '4px 0', scrollbarWidth: 'none' }}>
-                    {expandedPlays?.pitcherProps.home.kProps.slice(0, 4).map((k, idx) => (
-                      <span key={idx} className="badge" style={{ flexShrink: 0, fontSize: '0.7rem', borderColor: k.line === expandedPlays?.pitcherProps.home.safeK.play.split(' ')[1] ? 'var(--color-low-risk)' : 'var(--border-glass)' }}>
-                        {k.line}: <strong style={{ color: 'var(--text-primary)' }}>{k.odds}</strong>
-                      </span>
-                    ))}
+                  <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                    📊 Qué jugar y qué evitar por equipo
                   </div>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--color-low-risk)', marginTop: '2px', fontWeight: 600 }}>
-                    ★ Sugerido Seguro: {expandedPlays?.pitcherProps.home.safeK.play} ({expandedPlays?.pitcherProps.home.safeK.odds})
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <TeamRecPanel
+                      label="Visitante"
+                      abbrev={awayTeam.abbrev}
+                      logo={awayTeam.logo}
+                      recs={awayRecs}
+                      nos={awayNos}
+                      side="away"
+                    />
+                    <TeamRecPanel
+                      label="Local"
+                      abbrev={homeTeam.abbrev}
+                      logo={homeTeam.logo}
+                      recs={homeRecs}
+                      nos={homeNos}
+                      side="home"
+                    />
                   </div>
                 </div>
 
+                {prediction?.details && (
+                  <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.55', padding: '10px 12px', background: 'hsl(210,20%,98%)', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    {prediction.details}
+                  </p>
+                )}
               </div>
             )}
 
-            {/* PESTAÑA: BATEO */}
-            {activeTab === 'batting' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
-                {/* Home Run del Día */}
-                <div className="glass-panel" style={{ padding: '6px 10px', border: 'none', background: 'rgba(255,255,255,0.01)', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>
-                    Candidato a Home Run (Stadium Factor)
+            {/* LÍNEAS */}
+            {activeTab === 'lineas' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  {
+                    label: 'Ganador (Moneyline)',
+                    content: (
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '0.78rem', fontWeight: 700 }}>
+                        <span>{awayTeam.abbrev}: <strong style={{ color: 'var(--color-primary)' }}>{expandedPlays?.moneyline?.awayOdds}</strong></span>
+                        <span>{homeTeam.abbrev}: <strong style={{ color: 'var(--color-primary)' }}>{expandedPlays?.moneyline?.homeOdds}</strong></span>
+                      </div>
+                    )
+                  },
+                  {
+                    label: 'Hándicap (Run Line)',
+                    content: (
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '0.78rem', fontWeight: 700, flexWrap: 'wrap' }}>
+                        <span>{expandedPlays?.runLine?.favName} {expandedPlays?.runLine?.favLine}: <strong>{expandedPlays?.runLine?.favOdds}</strong></span>
+                        <span>{expandedPlays?.runLine?.undName} {expandedPlays?.runLine?.undLine}: <strong>{expandedPlays?.runLine?.undOdds}</strong></span>
+                      </div>
+                    )
+                  },
+                  {
+                    label: 'Total Carreras (Over/Under)',
+                    content: (
+                      <div style={{ display: 'flex', gap: '12px', fontSize: '0.78rem', fontWeight: 700 }}>
+                        <span>Línea: <strong style={{ color: 'var(--color-medium-risk)' }}>{expandedPlays?.totals?.line}</strong></span>
+                        <span>Más: <strong>{expandedPlays?.totals?.overOdds}</strong></span>
+                        <span>Menos: <strong>{expandedPlays?.totals?.underOdds}</strong></span>
+                      </div>
+                    )
+                  }
+                ].map((row, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '6px', background: 'hsl(210,20%,98%)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 600 }}>{row.label}</span>
+                    {row.content}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* INNINGS */}
+            {activeTab === 'innings' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* 1ra entrada */}
+                <div style={{ background: 'hsl(210,20%,98%)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>
+                    <span>1ra Entrada</span>
+                    <span style={{ color: 'var(--color-low-risk)' }}>Recomienda: {expandedPlays?.firstInning?.recommendation}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 700, flexWrap: 'wrap', gap: '6px' }}>
+                    <span>{awayTeam.abbrev}: {expandedPlays?.firstInning?.awayOdds} ({expandedPlays?.firstInning?.probAway}%)</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Empate: {expandedPlays?.firstInning?.tieOdds}</span>
+                    <span>{homeTeam.abbrev}: {expandedPlays?.firstInning?.homeOdds} ({expandedPlays?.firstInning?.probHome}%)</span>
+                  </div>
+                </div>
+
+                {/* 1ra mitad */}
+                <div style={{ background: 'hsl(210,20%,98%)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px' }}>
+                    <span>Primeros 5 Innings</span>
+                    <span style={{ color: 'var(--color-primary)' }}>Recomienda: {expandedPlays?.first5Innings?.recommendation}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 700, flexWrap: 'wrap', gap: '6px' }}>
+                    <span>{awayTeam.abbrev}: {expandedPlays?.first5Innings?.awayOdds} ({expandedPlays?.first5Innings?.confidenceAway}%)</span>
+                    <span>{homeTeam.abbrev}: {expandedPlays?.first5Innings?.homeOdds} ({expandedPlays?.first5Innings?.confidenceHome}%)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PONCHES */}
+            {activeTab === 'pitching' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '0.78rem' }}>
+                {[
+                  { label: `${pitchers?.away?.name} (Visitante, K/9: ${pitchers?.away?.k9 || '8.5'})`, data: expandedPlays?.pitcherProps?.away },
+                  { label: `${pitchers?.home?.name} (Local, K/9: ${pitchers?.home?.k9 || '8.5'})`,   data: expandedPlays?.pitcherProps?.home },
+                ].map(({ label, data }, i) => (
+                  <div key={i} style={{ background: 'hsl(210,20%,98%)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px', fontSize: '0.72rem' }}>{label}</span>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                      {data?.kProps?.slice(0, 5).map((k, idx) => (
+                        <span key={idx} className="badge" style={{
+                          fontSize: '0.7rem',
+                          borderColor: k.line === data?.safeK?.play?.split(' ')?.[1] ? 'var(--color-low-risk-border)' : 'var(--border-glass)',
+                          color:       k.line === data?.safeK?.play?.split(' ')?.[1] ? 'var(--color-low-risk)' : 'var(--text-secondary)',
+                          background:  k.line === data?.safeK?.play?.split(' ')?.[1] ? 'var(--color-low-risk-bg)' : undefined,
+                        }}>
+                          {k.line}K: <strong>{k.odds}</strong>
+                        </span>
+                      ))}
+                    </div>
+                    {data?.safeK && (
+                      <div style={{ marginTop: '6px', fontSize: '0.72rem', fontWeight: 700, color: 'var(--color-low-risk)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        ✅ Sugerido: {data.safeK.play} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>({data.safeK.odds})</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* BATEO */}
+            {activeTab === 'bateo' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.78rem' }}>
+                <div style={{ background: 'hsl(210,20%,98%)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+                    🏟️ Candidato a Home Run
                   </span>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                      {expandedPlays?.batterProps.home.hrHitter.name} ({homeTeam.abbrev})
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700 }}>
+                      {expandedPlays?.batterProps?.home?.hrHitter?.name} ({homeTeam.abbrev})
                     </span>
                     <span style={{ color: 'var(--color-medium-risk)', fontWeight: 800 }}>
-                      {expandedPlays?.batterProps.home.hrHitter.odds} ({expandedPlays?.batterProps.home.hrHitter.confidence}% Conf)
+                      {expandedPlays?.batterProps?.home?.hrHitter?.odds} — {expandedPlays?.batterProps?.home?.hrHitter?.confidence}% conf.
                     </span>
                   </div>
                 </div>
 
-                {/* Base Robada del Día */}
-                <div className="glass-panel" style={{ padding: '6px 10px', border: 'none', background: 'rgba(255,255,255,0.01)', borderRadius: '6px' }}>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>
-                    Base Robada (Slide Step / Pop Time)
+                <div style={{ background: 'hsl(210,20%,98%)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-glass)' }}>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: '4px' }}>
+                    🏃 Base Robada del Día
                   </span>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px' }}>
-                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-                      {expandedPlays?.batterProps.home.baseStealer.name} ({homeTeam.abbrev})
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 700 }}>
+                      {expandedPlays?.batterProps?.home?.baseStealer?.name} ({homeTeam.abbrev})
                     </span>
                     <span style={{ color: 'var(--color-primary)', fontWeight: 800 }}>
-                      {expandedPlays?.batterProps.home.baseStealer.odds}
+                      {expandedPlays?.batterProps?.home?.baseStealer?.odds}
                     </span>
                   </div>
                 </div>
               </div>
             )}
-
           </div>
 
-          {/* Línea divisoria */}
-          <div style={{ height: '1px', background: 'var(--border-glass)' }}></div>
-
-          {/* Sección Predicción Destacada del Juego */}
-          <div className="glass-panel" style={{ 
-            padding: '12px 14px', 
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
-            borderColor: 'rgba(255,255,255,0.06)',
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '14px',
-            borderRadius: '10px'
-          }}>
-            {/* Dial de confianza */}
-            <div className="dial-container" style={{ width: '70px', height: '70px' }}>
-              <svg className="dial-svg" viewBox="0 0 90 90">
-                <circle className="dial-bg" cx="45" cy="45" r={radius} />
-                <circle 
-                  className="dial-progress" 
-                  cx="45" 
-                  cy="45" 
-                  r={radius} 
-                  stroke={getConfidenceColor(prediction.confidence)}
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                />
-              </svg>
-              <div className="dial-text">
-                <span className="dial-number" style={{ color: getConfidenceColor(prediction.confidence), fontSize: '1.05rem' }}>
-                  {prediction.confidence}%
-                </span>
-              </div>
-            </div>
-
-            {/* Detalle de recomendación */}
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
-                Sugerencia de la Mesa
-              </span>
-              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', margin: '2px 0' }}>
-                {prediction.bestPlay}
-              </span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>
-                {climate.split('.')[0]}
-              </span>
-            </div>
-          </div>
+          {/* Divisor */}
+          <div style={{ height: '1px', background: 'var(--border-glass)' }} />
 
           {/* Botón H2H */}
-          <button 
-            className="btn-secondary" 
-            style={{ width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '10px' }}
+          <button
+            className="btn-secondary"
+            style={{ width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '9px' }}
             onClick={() => onCompare(game)}
           >
             <BarChart3 style={{ width: '14px', height: '14px' }} />
             Ver Comparativa H2H Avanzada
           </button>
 
-          {/* Banner de resultado para partidos finalizados */}
+          {/* Resultado final */}
           {isFinished && (
             checkSuccess() ? (
               <div style={{
-                padding: '10px 14px',
-                background: 'rgba(34, 197, 94, 0.08)',
-                border: '1px solid rgba(34, 197, 94, 0.25)',
-                borderRadius: '8px',
-                color: 'var(--color-low-risk)',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
+                padding: '9px 14px', background: 'var(--color-low-risk-bg)',
+                border: '1.5px solid var(--color-low-risk-border)',
+                borderRadius: '8px', color: 'var(--color-low-risk)',
+                fontSize: '0.8rem', fontWeight: 700,
+                textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px'
               }}>
-                <CheckCircle2 style={{ width: '16px', height: '16px' }} />
-                Pronóstico Acertado (Sugerencia Ganada)
+                <CheckCircle2 style={{ width: '15px', height: '15px' }} />
+                ✅ Pronóstico Acertado — Sugerencia Ganada
               </div>
             ) : (
               <div style={{
-                padding: '10px 14px',
-                background: 'rgba(239, 68, 68, 0.08)',
-                border: '1px solid rgba(239, 68, 68, 0.2)',
-                borderRadius: '8px',
-                color: 'var(--color-high-risk)',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                textAlign: 'center',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px'
+                padding: '9px 14px', background: 'var(--color-high-risk-bg)',
+                border: '1.5px solid var(--color-high-risk-border)',
+                borderRadius: '8px', color: 'var(--color-high-risk)',
+                fontSize: '0.8rem', fontWeight: 700,
+                textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px'
               }}>
-                <AlertCircle style={{ width: '16px', height: '16px' }} />
-                Pronóstico No Acertado
+                <AlertCircle style={{ width: '15px', height: '15px' }} />
+                ❌ Pronóstico No Acertado
               </div>
             )
           )}
         </>
       )}
-
     </div>
   );
 }
