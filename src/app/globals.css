@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 :root {
   /* === PALETA CLARA PROFESIONAL === */
   --bg-main: hsl(210, 22%, 96%);
@@ -94,8 +96,6 @@
 }
 
 /* ===== BASE ===== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
 * {
   box-sizing: border-box;
   padding: 0;
